@@ -70,7 +70,7 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 			Annotations: annotations,
 		},
 		Spec: columbiav1.PrivacyBudgetClaimSpec{
-			//Priority: int32(1000*model.Epsilon) * int32(model.NBlocks),
+			Priority: int32(1000*model.Epsilon) * int32(model.NBlocks),
 			Requests: []columbiav1.Request{
 				{
 					Identifier: "1",
