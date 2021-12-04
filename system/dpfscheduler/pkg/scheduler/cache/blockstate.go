@@ -9,6 +9,7 @@ import (
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 )
 
+
 type DemandState struct {
 	Availability bool
 	Share        float64
@@ -54,7 +55,7 @@ func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget
 	//blockCost = 0
 	//} else {
 	//	share = 0
-	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
+//	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
 	//}
 
 	return &DemandState{
@@ -166,7 +167,7 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	defer blockState.Unlock()
 
 	var overflow_a map[float64]float64
-	overflow_a = blockState.compute_block_overflow()
+//	overflow_a = blockState.compute_block_overflow()
 
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
@@ -182,6 +183,8 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 
 	return demandMap
 }
+
+
 
 func (blockState *BlockState) Snapshot() *columbiav1.PrivateDataBlock {
 	blockState.RLock()

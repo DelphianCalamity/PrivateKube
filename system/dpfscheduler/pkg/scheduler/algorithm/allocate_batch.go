@@ -242,6 +242,7 @@ func (dpf *DpfBatch) updateAffectedClaims(claimShareMap map[string]cache.ShareIn
 		}
 		claimState.RUnlock()
 
+
 		if !affected {
 			continue
 		}

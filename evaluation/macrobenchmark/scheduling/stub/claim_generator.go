@@ -48,11 +48,11 @@ func MakeSampler(rdp bool, mice_ratio float64, mice_path string, elephants_path 
 func (p MiceElphantsSampler) SampleOne(r *rand.Rand) Pipeline {
 	if r.Float64() < p.MiceRatio {
 		i := r.Intn(len(p.Mice))
-		//fmt.Println("Sample one mice: \n", i)
+		fmt.Println("Sample one mice: \n", i)
 		return p.Mice[i]
 	}
 	i := r.Intn(len(p.Elephants))
-	//fmt.Println("Sample one elephants: %d\n", i)
+	fmt.Println("Sample one elephants: \n", i)
 	return p.Elephants[i]
 }
 

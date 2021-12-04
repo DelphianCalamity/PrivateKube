@@ -29,7 +29,7 @@ def schedulers(
     keep_intermediary=True,
     keep_raw_logs=False,
     analyze=True,
-    max_trials: int = 5,
+    max_trials: int = 1,
     n_processes: int = 1,
     worker_delay: int = 0,
 ):

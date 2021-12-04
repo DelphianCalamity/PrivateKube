@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	"log"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/algorithm"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/flowreleasing"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/queue"
@@ -165,6 +168,7 @@ func New(privacyResourceClient privacyclientset.Interface,
 	scheduler.privateResourceClient = privacyResourceClient
 	scheduler.cache = schedulerCache
 	scheduler.timer = timing.MakeDefaultTimer()
+	fmt.Println("\n\n\nTIMEOUT:", option.DefaultTimeout)
 	scheduler.schedulingQueue = queue.NewSchedulingQueue(scheduler.timer.Now(), option.DefaultTimeout)
 	scheduler.updater = updater.NewResourceUpdater(privacyResourceClient, schedulerCache)
 	scheduler.scheduler = option.Scheduler
@@ -211,7 +215,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
 	}
 
 	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
@@ -389,7 +393,7 @@ func (dpfScheduler *DpfScheduler) channelHandler() {
 func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
-
+	klog.Infof("\n\nCHECK TIMOUT\n\n")
 	claimHandlers := dpfScheduler.schedulingQueue.PopWaitingUntil(dpfScheduler.timer.Now())
 
 	for _, claimHandler := range claimHandlers {
@@ -412,11 +416,38 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(wait_time time.Duration) {
+	time.Sleep(wait_time)
+
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
 	klog.Infof("\n\n\nReleasing Budget\n\n\n")
 
 	blockStates := dpfScheduler.flowController.Release()
+
+	f, err := os.Create("/home/kelly/PrivateKube/cpu-perf/cpu-perf")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close() // error handling omitted for example
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
+
+	start := time.Now()
 	dpfScheduler.batch.AllocateAvailableBudgets(blockStates)
+	elapsed := time.Since(start)
+	klog.Infof("\n\n\n\nRuntime", elapsed)
+
+	f1, err1 := os.Create("/home/kelly/PrivateKube/mem-perf/mem-perf")
+	if err1 != nil {
+		log.Fatal("could not create memory profile: ", err1)
+	}
+	defer f.Close() // error handling omitted for example
+	runtime.GC()    // get up-to-date statistics
+	if err1 := pprof.WriteHeapProfile(f1); err1 != nil {
+		log.Fatal("could not write memory profile: ", err1)
+	}
+
 }
