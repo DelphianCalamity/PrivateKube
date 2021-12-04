@@ -6,7 +6,6 @@ import (
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/updater"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 	"k8s.io/klog"
-
 )
 
 type Controller struct {
@@ -43,8 +42,8 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 		_ = controller.resourceUpdater.ApplyOperationToDataBlock(controller.releaseLatestBudget, blockState)
 
 		klog.Infof("block [%s] has pending budget %v, available budget %v", blockState.GetId(),
-		 	blockState.View().Status.PendingBudget.ToString(),
-		 	blockState.View().Status.AvailableBudget.ToString())
+			blockState.View().Status.PendingBudget.ToString(),
+			blockState.View().Status.AvailableBudget.ToString())
 
 		if !blockState.View().Status.AvailableBudget.IsEmpty() {
 			releasedBlocks = append(releasedBlocks, blockState)
@@ -56,6 +55,7 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 
 // return value indicates whether the data block has been updated
 func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataBlock) error {
+
 	if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
 		return budgetReleaseNotStart()
 	}
@@ -91,11 +91,12 @@ func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataB
 	//klog.Infof("lastDuration, RemainDuration", lastDuration, remainingDuration)
 	// this evaluation also prevents zero division.
 	if lastDuration >= remainingDuration {
-		releaseBudget(block, block.Status.PendingBudget.Copy(), now)
+		//releaseBudget(block, block.Status.PendingBudget.Copy(), now)
+		releaseBudget(block, block.Spec.InitialBudget.Copy().Div(5), now)
 		return nil
 	}
 
-//	releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
+	//	releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
 	releaseBudget(block, block.Status.PendingBudget.Copy(), now)
 	return nil
 }

@@ -1,13 +1,6 @@
 package scheduler
 
 import (
-	"context"
-	"fmt"
-	"time"
-	"log"
-	"os"
-	"runtime"
-	"runtime/pprof"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/algorithm"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/flowreleasing"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/queue"
@@ -15,10 +8,17 @@ import (
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/updater"
 	"columbia.github.com/privatekube/privacyresource/pkg/framework"
 	privacyclientset "columbia.github.com/privatekube/privacyresource/pkg/generated/clientset/versioned"
+	"context"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"log"
+	"os"
+	"runtime"
+	"runtime/pprof"
+	"time"
 
 	schedulercache "columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
@@ -215,7 +215,8 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*60_000)*time.Millisecond)
+		//go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
 	}
 
 	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
@@ -416,8 +417,12 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(wait_time time.Duration) {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
 	time.Sleep(wait_time)
+	wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+}
+
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
 
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
