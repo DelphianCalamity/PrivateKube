@@ -45,17 +45,17 @@ func (blockState *BlockState) GetReservedMap() map[string]columbiav1.PrivacyBudg
 }
 
 func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget, overflow_a map[float64]float64) *DemandState {
-	initialBudget := blockState.block.Spec.InitialBudget
+//	initialBudget := blockState.block.Spec.InitialBudget
 	availableBudget := blockState.block.Status.AvailableBudget
 
 	share := 0.0
 	blockCost := 0.0
 	//if util.IsDPF() {
-	share = getDominantShare(budget, initialBudget)
+//	share = getDominantShare(budget, initialBudget)
 	//blockCost = 0
 	//} else {
 	//	share = 0
-//	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
+	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
 	//}
 
 	return &DemandState{
@@ -167,7 +167,7 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	defer blockState.Unlock()
 
 	var overflow_a map[float64]float64
-//	overflow_a = blockState.compute_block_overflow()
+	overflow_a = blockState.compute_block_overflow()
 
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {

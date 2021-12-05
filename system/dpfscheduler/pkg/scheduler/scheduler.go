@@ -419,10 +419,13 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
 	time.Sleep(wait_time)
-	wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+	for {
+		dpfScheduler.flowReleaseAndAllocate()
+		time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+	}
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
 
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()

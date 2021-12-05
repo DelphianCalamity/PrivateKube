@@ -197,10 +197,10 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
         except KeyError:
             n_pipelines.append(0)
 
-    if empty_blocks > failure_ratio * len(blocks):
-        raise Exception(
-            f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
-        )
+#    if empty_blocks > failure_ratio * len(blocks):
+#        raise Exception(
+#            f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
+#        )
 
     blocks_df = pd.DataFrame(
         data={

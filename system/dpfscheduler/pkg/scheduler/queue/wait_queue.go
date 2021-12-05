@@ -9,7 +9,7 @@ import (
 
 const (
 	// 2 seconds
-	BucketSize = 60000*30
+	BucketSize = 60000*26
 )
 
 type waitQueue struct {
