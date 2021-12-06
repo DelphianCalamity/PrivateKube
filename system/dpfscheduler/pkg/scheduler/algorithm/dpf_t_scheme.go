@@ -53,7 +53,7 @@ func (dpf *DpfTSchemeBatch) batchAllocate(
 		// No need to reschedule, because the only reason of failure is claim does not exist
 		return true
 	}
-	//dpf.AllocateAvailableBudgets(blockStates)
+	dpf.AllocateAvailableBudgets(blockStates)
 	return true
 }
 
