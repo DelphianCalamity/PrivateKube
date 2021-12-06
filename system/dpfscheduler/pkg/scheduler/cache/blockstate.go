@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/util"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 )
 
+var time_elapsed time.Duration = 0
 
 type DemandState struct {
 	Availability bool
@@ -55,7 +57,7 @@ func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget
 	//blockCost = 0
 	//} else {
 	//	share = 0
-//	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
+	//	blockCost = getPerBlockCost(budget, availableBudget, overflow_a)
 	//}
 
 	return &DemandState{
@@ -166,8 +168,10 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
 
+	start := time.Now()
+
 	var overflow_a map[float64]float64
-//	overflow_a = blockState.compute_block_overflow()
+	//	overflow_a = blockState.compute_block_overflow()
 
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
@@ -181,10 +185,10 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	}
 	blockState.Demands = demandMap
 
+	time_elapsed += time.Since(start)
+	fmt.Println("Time elapsed", time_elapsed)
 	return demandMap
 }
-
-
 
 func (blockState *BlockState) Snapshot() *columbiav1.PrivateDataBlock {
 	blockState.RLock()
