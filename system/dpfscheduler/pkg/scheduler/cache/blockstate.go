@@ -11,7 +11,8 @@ import (
 )
 
 //var time_elapsed time.Duration = 0
-blockToDuration := make(map[string]time.Duration)
+var blockToDuration map[string]time.Duration
+
 type DemandState struct {
 	Availability bool
 	Share        float64
@@ -167,6 +168,9 @@ func (blockState *BlockState) compute_block_overflow() map[float64]float64 {
 func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
+	if blockToDuration == nil {
+		blockToDuration = make(map[string]time.Duration)
+	}
 
 	var overflow_a map[float64]float64
 	//	overflow_a = blockState.compute_block_overflow()
