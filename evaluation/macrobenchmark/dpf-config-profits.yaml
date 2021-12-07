@@ -1,0 +1,24 @@
+scheduler: "DPF"
+mode: "T"
+T:
+  - 1
+release_period:
+  - 24
+timeout: 28
+epsilon: 10
+delta: 1e-5
+rdp:
+  - 1
+n: 2
+t: 20_000
+elephants: "/home/kelly/PrivateKube/evaluation/macrobenchmark/workload/params/runs/event/elephants"
+mice: "/home/kelly/PrivateKube/evaluation/macrobenchmark/workload/params/runs/event/mice-laplace"
+mice_ratio: 0.5
+m: 
+  - 10
+  - 20
+  - 30
+#  - 40
+#  - 50
+#  - 60
+b: 10
