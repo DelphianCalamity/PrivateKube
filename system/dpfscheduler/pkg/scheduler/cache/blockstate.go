@@ -11,8 +11,7 @@ import (
 )
 
 //var time_elapsed time.Duration = 0
-//var blockToDuration map[string]time.Duration
-blockToDuration := map[string]time.Duration{}
+blockToDuration := make(map[string]time.Duration)
 type DemandState struct {
 	Availability bool
 	Share        float64
