@@ -436,6 +436,7 @@ func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(wait_time time.Duration
 	defer pprof.StopCPUProfile()
 
 	start := time.Now()
+	klog.Infof("\n\n\n\nStart-time", start)
 	dpfScheduler.batch.AllocateAvailableBudgets(blockStates)
 	elapsed := time.Since(start)
 	klog.Infof("\n\n\n\nRuntime", elapsed)
