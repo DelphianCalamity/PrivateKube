@@ -10,7 +10,8 @@ import (
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 )
 
-var time_elapsed time.Duration = 0
+//var time_elapsed time.Duration = 0
+var blockToDuration map[string]time.Duration
 
 type DemandState struct {
 	Availability bool
@@ -168,25 +169,26 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
 
-	start := time.Now()
-
 	var overflow_a map[float64]float64
 	//	overflow_a = blockState.compute_block_overflow()
-
+	start := time.Now()
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
 		demand := blockState.computeDemandState(reservedBudget, overflow_a)
 		demandMap[claimId] = demand
 	}
-
+	time_elapsed := time.Since(start)
+	_, ok := blockToDuration[blockState.id]
+	if !ok {
+		blockToDuration[blockState.id] = time_elapsed
+	}
 	// invalid the old demand states
 	for _, demandState := range blockState.Demands {
 		demandState.IsValid = false
 	}
 	blockState.Demands = demandMap
 
-	time_elapsed += time.Since(start)
-	fmt.Println("Time elapsed", time_elapsed)
+	fmt.Println("Time elapsed - block- id", blockState.id, time_elapsed)
 	return demandMap
 }
 
