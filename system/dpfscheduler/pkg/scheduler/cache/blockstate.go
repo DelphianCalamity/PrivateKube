@@ -11,7 +11,6 @@ import (
 )
 
 //var time_elapsed time.Duration = 0
-var blockToDuration map[string]time.Duration
 
 type DemandState struct {
 	Availability bool
@@ -168,9 +167,6 @@ func (blockState *BlockState) compute_block_overflow() map[float64]float64 {
 func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
-	if blockToDuration == nil {
-		blockToDuration = make(map[string]time.Duration)
-	}
 
 	var overflow_a map[float64]float64
 	//	overflow_a = blockState.compute_block_overflow()
@@ -181,10 +177,6 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 		demandMap[claimId] = demand
 	}
 	time_elapsed := time.Since(start)
-	_, ok := blockToDuration[blockState.id]
-	if !ok {
-		blockToDuration[blockState.id] = time_elapsed
-	}
 	// invalid the old demand states
 	for _, demandState := range blockState.Demands {
 		demandState.IsValid = false
