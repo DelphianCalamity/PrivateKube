@@ -5,6 +5,7 @@ import (
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 	"fmt"
 	"github.com/mit-drl/goop"
+	"github.com/mit-drl/goop/solvers"
 	"math"
 	"sync"
 )
@@ -223,7 +224,7 @@ func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a f
 	mba = 0.0
 	for i := 0; i < len(priorities_per_alpha); i++ {
 		if sol.Value(x[i]) > 0 {
-			relval += float64(priorities_per_alpha[i])
+			mba += float64(priorities_per_alpha[i])
 		}
 	}
 	return mba
