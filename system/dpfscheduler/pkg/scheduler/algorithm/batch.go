@@ -2,6 +2,7 @@ package algorithm
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
@@ -171,35 +172,49 @@ func (dpf *DpfBatch) getAvailableBlocks(requestViewer framework.RequestViewer) [
 
 	//namespace := requestViewer.Claim.Namespace
 	//request := requestViewer.View().AllocateRequest
+	minBlocks := requestViewer.View().AllocateRequest.MinNumberOfBlocks
 	//requestId := requestViewer.Id
 
-	predicate := func(blockState *cache.BlockState) bool {
-		//block := blockState.View()
-		// If this data block has been allocated to this request, then we consider this should be available data blocks
-		// belonging to this request.
-		//if _, ok := block.Status.LockedBudgetMap[requestId]; ok {
-		//	return true
-		//}
-		//
-		//if block.Namespace != namespace || request.Dataset != block.Spec.Dataset {
-		//	return false
-		//}
-		//
-		//dimensionMap := map[string]columbiav1.Dimension{}
-		//for _, dimension := range block.Spec.Dimensions {
-		//	dimensionMap[dimension.Attribute] = dimension
-		//}
-		//
-		//for _, condition := range request.Conditions {
-		//	dimension, ok := dimensionMap[condition.Attribute]
-		//	if !ok || !validateCondition(condition, dimension) {
-		//		return false
-		//	}
-		//}
-
-		return true
+	result := make([]*cache.BlockState, 0, 16)
+	blockNames := make([]string, 0, 16)
+	blockStates := dpf.cache.AllBlocks()
+	for i := 0; i < len(blockStates); i++ {
+		blockNames = append(blockNames, blockStates[i].GetId())
 	}
-	return dpf.cache.FilterBlock(predicate)
+
+	sort.Strings(blockNames)
+	for l := len(blockNames) - 1; l >= 0 && l >= len(blockNames)-minBlocks; l-- {
+		result = append(result, dpf.cache.GetBlock(blockNames[l]))
+	}
+
+	//predicate := func(blockState *cache.BlockState) bool {
+	//	block := blockState.View()
+	//	//If this data block has been allocated to this request, then we consider this should be available data blocks
+	//	//belonging to this request.
+	//	if _, ok := block.Status.LockedBudgetMap[requestId]; ok {
+	//		return true
+	//	}
+	//
+	//	if block.Namespace != namespace || request.Dataset != block.Spec.Dataset {
+	//		return false
+	//	}
+	//
+	//	dimensionMap := map[string]columbiav1.Dimension{}
+	//	for _, dimension := range block.Spec.Dimensions {
+	//		dimensionMap[dimension.Attribute] = dimension
+	//	}
+	//
+	//	for _, condition := range request.Conditions {
+	//		dimension, ok := dimensionMap[condition.Attribute]
+	//		if !ok || !validateCondition(condition, dimension) {
+	//			return false
+	//		}
+	//	}
+	//
+	//	return true
+	//}
+	//	return dpf.cache.FilterBlock(predicate)
+	return result
 }
 
 func (dpf *DpfBatch) tryBatchConsume(requestViewer framework.RequestViewer) bool {
