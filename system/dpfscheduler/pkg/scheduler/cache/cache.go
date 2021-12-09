@@ -132,7 +132,7 @@ func (cache *StateCache) updateDemands(blockState *BlockState) {
 	defer cache.claimLock.RUnlock()
 
 	blockId := blockState.GetId()
-	for claimId, demand := range blockState.UpdateDemandMap() {
+	for claimId, demand := range blockState.UpdateDemandMap(cache.claimCache) {
 		claimState := cache.claimCache.Get(claimId)
 		if claimState == nil {
 			continue
