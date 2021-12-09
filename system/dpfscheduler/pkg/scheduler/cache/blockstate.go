@@ -155,8 +155,32 @@ func (blockState *BlockState) compute_block_overflow() map[float64]float64 {
 	return overflow_a
 }
 
+// Softmax returns the softmax of m with temperature T.
+// i.e. exp(x / T) / sum(exp(x / T)) in vector form
+func Softmax(x []float64, T float64) []float64 {
+	r := make([]float64, len(x))
+	d := 1e-15 // Denominator, don't divide by zero
+
+	// Substract the max to avoid overflow
+	m := 0.0
+	for i, v := range x {
+		if i == 0 || v/T > m {
+			m = v / T
+		}
+	}
+	// Denominator
+	for _, v := range x {
+		d += math.Exp((v - m) / T)
+	}
+	// Softmax vector
+	for i, v := range x {
+		r[i] = math.Exp((v-m)/T) / d
+	}
+	return r
+}
+
 func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a float64) float64 {
-	var relval float64
+	var mba float64
 	// Instantiate a new model
 	m := goop.NewModel()
 	// Add your variables to the model
@@ -185,13 +209,13 @@ func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a f
 
 	// Print out the solution
 	//      fmt.Println("x =", sol.Value(x))
-	relval = 0.0
+	mba = 0.0
 	for i := 0; i < len(priorities_per_alpha); i++ {
 		if sol.Value(x[i]) > 0 {
 			relval += float64(priorities_per_alpha[i])
 		}
 	}
-	return relval
+	return mba
 }
 
 func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float64]float64 {
@@ -219,12 +243,26 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	a := blockState.block.Status.AvailableBudget.Renyi
 	for i := range a {
 		alpha := a[i].Alpha
-		if len(demands_per_alpha[alpha]) > 0 {
-			knapsack_a[alpha] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon)
+		if len(demands_per_alpha[alpha]) > 0 && a[i].Epsilon > 0 {
+			knapsack_a[alpha] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon) / a[i].Epsilon
 		} else {
 			knapsack_a[alpha] = 0
 		}
 	}
+
+	// Quick and sloppy conversion to array
+	arr := []float64{}
+	for _, v := range knapsack_a {
+		arr = append(arr, v)
+	}
+	r := Softmax(arr, 10)
+	// Quick and sloppy conversion back to a map
+	i := 0
+	for k, _ := range knapsack_a {
+		knapsack_a[k] = r[i]
+		i++
+	}
+
 	return knapsack_a
 }
 
