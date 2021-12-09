@@ -156,15 +156,25 @@ func (blockState *BlockState) compute_block_overflow() map[float64]float64 {
 }
 
 func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a float64) float64 {
-	var relval int32
+	var relval float64
 	// Instantiate a new model
 	m := goop.NewModel()
 	// Add your variables to the model
 	x := m.AddBinaryVarVector(len(demands_per_alpha))
 	// Add your constraints
-	m.AddConstr(goop.Sum(x.Mult(demands_per_alpha)).LessEq(a))
+
+	exp := goop.NewLinearExpr(0)
+	for i := 0; i < len(demands_per_alpha); i++ {
+		exp.Plus(x[i].Mult(demands_per_alpha[i]))
+	}
+	const_expr := goop.NewLinearExpr(a)
+	m.AddConstr(exp.LessEq(const_expr))
+
 	// Set a linear objective using your variables
-	obj := goop.Sum(x.Mult(priorities_per_alpha))
+	obj := goop.NewLinearExpr(0)
+	for i := 0; i < len(priorities_per_alpha); i++ {
+		obj.Plus(x[i].Mult(float64(priorities_per_alpha[i])))
+	}
 	m.SetObjective(obj, goop.SenseMaximize)
 	// Optimize the variables according to the model
 	sol, err := m.Optimize(solvers.NewGurobiSolver())
@@ -174,14 +184,14 @@ func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a f
 	}
 
 	// Print out the solution
-	fmt.Println("x =", sol.Value(x))
-	relval = 0
+	//      fmt.Println("x =", sol.Value(x))
+	relval = 0.0
 	for i := 0; i < len(priorities_per_alpha); i++ {
-		if sol.Value(x[i]) {
-			relval += priorities_per_alpha[i]
+		if sol.Value(x[i]) > 0 {
+			relval += float64(priorities_per_alpha[i])
 		}
 	}
-	return float64(relval)
+	return relval
 }
 
 func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float64]float64 {
