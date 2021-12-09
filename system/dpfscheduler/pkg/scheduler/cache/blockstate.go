@@ -219,7 +219,11 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	a := blockState.block.Status.AvailableBudget.Renyi
 	for i := range a {
 		alpha := a[i].Alpha
-		knapsack_a[alpha] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon)
+		if len(demands_per_alpha[alpha]) > 0 {
+			knapsack_a[alpha] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon)
+		} else {
+			knapsack_a[alpha] = 0
+		}
 	}
 	return knapsack_a
 }
@@ -236,7 +240,7 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]
 
 	var relval map[float64]float64
 	//var knapsack_a map[float64]float64
-	relval = blockState.compute_block_overflow()
+	//relval = blockState.compute_block_overflow()
 	relval = blockState.compute_knapsack(claimCache)
 
 	demandMap := map[string]*DemandState{}
