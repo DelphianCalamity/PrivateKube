@@ -1,14 +1,13 @@
 package cache
 
 import (
-	"fmt"
-	"math"
-	"sync"
-
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/util"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
+	"fmt"
+	"github.com/mit-drl/goop"
+	"math"
+	"sync"
 )
-
 
 type DemandState struct {
 	Availability bool
@@ -45,13 +44,13 @@ func (blockState *BlockState) GetReservedMap() map[string]columbiav1.PrivacyBudg
 }
 
 func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget, overflow_a map[float64]float64) *DemandState {
-//	initialBudget := blockState.block.Spec.InitialBudget
+	//	initialBudget := blockState.block.Spec.InitialBudget
 	availableBudget := blockState.block.Status.AvailableBudget
 
 	share := 0.0
 	blockCost := 0.0
 	//if util.IsDPF() {
-//	share = getDominantShare(budget, initialBudget)
+	//	share = getDominantShare(budget, initialBudget)
 	//blockCost = 0
 	//} else {
 	//	share = 0
@@ -156,22 +155,83 @@ func (blockState *BlockState) compute_block_overflow() map[float64]float64 {
 	return overflow_a
 }
 
+func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a float64) float64 {
+	var relval int32
+	// Instantiate a new model
+	m := goop.NewModel()
+	// Add your variables to the model
+	x := m.AddBinaryVarVector(len(demands_per_alpha))
+	// Add your constraints
+	m.AddConstr(goop.Sum(x.Mult(demands_per_alpha)).LessEq(a))
+	// Set a linear objective using your variables
+	obj := goop.Sum(x.Mult(priorities_per_alpha))
+	m.SetObjective(obj, goop.SenseMaximize)
+	// Optimize the variables according to the model
+	sol, err := m.Optimize(solvers.NewGurobiSolver())
+
+	if err != nil {
+		panic("Should not have an error")
+	}
+
+	// Print out the solution
+	fmt.Println("x =", sol.Value(x))
+	relval = 0
+	for i := 0; i < len(priorities_per_alpha); i++ {
+		if sol.Value(x[i]) {
+			relval += priorities_per_alpha[i]
+		}
+	}
+	return float64(relval)
+}
+
+func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float64]float64 {
+	knapsack_a := map[float64]float64{}
+	demands_per_alpha := map[float64][]float64{}
+	priorities_per_alpha := map[float64][]int32{}
+
+	for claim_id, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
+		reservedBudget.ToRenyi()
+		blockState.block.Status.AvailableBudget.ToRenyi()
+		r, _ := columbiav1.ReduceToSameSupport(reservedBudget.Renyi, blockState.block.Status.AvailableBudget.Renyi)
+		for i := range r {
+			alpha := r[i].Alpha
+			if _, ok := demands_per_alpha[alpha]; !ok {
+				demands_per_alpha[alpha] = make([]float64, 0, 16)
+				priorities_per_alpha[alpha] = make([]int32, 0, 16)
+			}
+			// Fill the array with all the demands for this block/alpha
+			if r[i].Epsilon > 0 {
+				demands_per_alpha[alpha] = append(demands_per_alpha[alpha], r[i].Epsilon)
+				priorities_per_alpha[alpha] = append(priorities_per_alpha[alpha], claimCache.Get(claim_id).claim.Spec.Priority)
+			}
+		}
+	}
+	a := blockState.block.Status.AvailableBudget.Renyi
+	for i := range a {
+		alpha := a[i].Alpha
+		knapsack_a[alpha] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon)
+	}
+	return knapsack_a
+}
+
 // UpdateDemandMap updates the demand for each claim on this block
 // - cost
 // - dominant share
 // - availability (enough eps/delta budget, or one alpha positive)
 // - valid
 
-func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
+func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
 
-	var overflow_a map[float64]float64
-	overflow_a = blockState.compute_block_overflow()
+	var relval map[float64]float64
+	//var knapsack_a map[float64]float64
+	relval = blockState.compute_block_overflow()
+	relval = blockState.compute_knapsack(claimCache)
 
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
-		demand := blockState.computeDemandState(reservedBudget, overflow_a)
+		demand := blockState.computeDemandState(reservedBudget, relval)
 		demandMap[claimId] = demand
 	}
 
@@ -183,8 +243,6 @@ func (blockState *BlockState) UpdateDemandMap() map[string]*DemandState {
 
 	return demandMap
 }
-
-
 
 func (blockState *BlockState) Snapshot() *columbiav1.PrivateDataBlock {
 	blockState.RLock()
