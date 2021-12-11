@@ -168,7 +168,7 @@ func run_exponential(scheduler_method, mode string, DPF_T int, dpf_release_perio
 	g.RunConstant(claim_names, timeout, initial_blocks+n_blocks, time.Duration(task_interval_millisecond)*time.Millisecond)
 
 	fmt.Println("Waiting for the last pipelines to timeout")
-	time.Sleep(50 * b.BlockInterval)
+	time.Sleep(20 * b.BlockInterval)
 
 	// Close the channels and browse the objets
 	fmt.Println("Collecting and saving the logs.")

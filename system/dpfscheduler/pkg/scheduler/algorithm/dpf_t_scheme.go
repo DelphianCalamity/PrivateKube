@@ -54,7 +54,7 @@ func (dpf *DpfTSchemeBatch) batchAllocate(
 		return true
 	}
 
-	dpf.AllocateAvailableBudgets(blockStates)
+//	dpf.AllocateAvailableBudgets(blockStates)
 	return true
 }
 

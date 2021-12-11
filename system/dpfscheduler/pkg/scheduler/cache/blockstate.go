@@ -8,7 +8,7 @@ import (
 	"github.com/mit-drl/goop/solvers"
 //	"k8s.io/klog"
 	"math"
-	"time"
+//	"time"
 	"sync"
 )
 
@@ -28,9 +28,9 @@ type BlockState struct {
 	id            string
 }
 
-var dpf bool = false
+var dpf bool = true
 var overflow bool = false
-var knapsack bool = true
+var knapsack bool = false
 
 func NewBlockState(block *columbiav1.PrivateDataBlock) *BlockState {
 	return &BlockState{
@@ -291,6 +291,11 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 // - availability (enough eps/delta budget, or one alpha positive)
 // - valid
 
+var steps_per_block map[string]int = make(map[string]int)
+var relval_per_block map[string]map[float64]float64 = make(map[string]map[float64]float64)
+var mu sync.Mutex = sync.Mutex{}
+var step_size int = 50
+
 func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
@@ -302,8 +307,26 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]
 		relval = blockState.compute_block_overflow()
 	}
 	if knapsack {
-		relval = blockState.compute_knapsack(claimCache)
+		mu.Lock()
+		if _, ok := steps_per_block[blockState.id]; !ok {
+			steps_per_block[blockState.id] = 0
+		}
+                steps := steps_per_block[blockState.id]
+		mu.Unlock()
+
+		if steps % step_size == 0 {
+			relval = blockState.compute_knapsack(claimCache)
+			mu.Lock()
+			relval_per_block[blockState.id] = relval
+			steps_per_block[blockState.id] += 1
+			mu.Unlock()
+
+		} else {
+			relval = relval_per_block[blockState.id]
+		}
 	}
+
+
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
 		demand := blockState.computeDemandState(reservedBudget, relval)

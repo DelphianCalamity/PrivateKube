@@ -14,10 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"log"
-	"os"
-	"runtime"
-	"runtime/pprof"
+//	"log"
 	"time"
 
 	schedulercache "columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
@@ -215,7 +212,8 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*60_000)*time.Millisecond)
+//		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
 	}
 
 	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
@@ -416,39 +414,26 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(wait_time time.Duration) {
-	time.Sleep(wait_time)
 
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
+	time.Sleep(wait_time)
+	for {
+		dpfScheduler.flowReleaseAndAllocate()
+		time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+	}
+}
+
+
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
 	klog.Infof("\n\n\nReleasing Budget\n\n\n")
 
 	blockStates := dpfScheduler.flowController.Release()
 
-	f, err := os.Create("/home/kelly/PrivateKube/cpu-perf/cpu-perf")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
-	}
-	defer f.Close() // error handling omitted for example
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-	defer pprof.StopCPUProfile()
-
 	start := time.Now()
 	klog.Infof("\n\n\n\nStart-time", start)
 	dpfScheduler.batch.AllocateAvailableBudgets(blockStates)
 	elapsed := time.Since(start)
 	klog.Infof("\n\n\n\nRuntime", elapsed)
-
-	f1, err1 := os.Create("/home/kelly/PrivateKube/mem-perf/mem-perf")
-	if err1 != nil {
-		log.Fatal("could not create memory profile: ", err1)
-	}
-	defer f.Close() // error handling omitted for example
-	runtime.GC()    // get up-to-date statistics
-	if err1 := pprof.WriteHeapProfile(f1); err1 != nil {
-		log.Fatal("could not write memory profile: ", err1)
-	}
-
 }

@@ -10,9 +10,10 @@ type Pipeline struct {
 	Demand  columbiav1.PrivacyBudget
 	NBlocks int
 	Epsilon float64
+	Type    int
 }
 
-func NewPipeline(name string, p RawPipeline, rdp bool) Pipeline {
+func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
 	demand := columbiav1.PrivacyBudget{}
 	if rdp {
 		b := make(columbiav1.RenyiBudget, len(p.Alphas))
@@ -39,8 +40,10 @@ func NewPipeline(name string, p RawPipeline, rdp bool) Pipeline {
 		Demand:  demand,
 		NBlocks: p.NBlocks / RAW_BLOCKS_MULTIPLIER,
 		Epsilon: p.Epsilon,
+		Type:    Type,
 	}
 }
+
 
 func (g *ClaimGenerator) createFlatDemand(start_block int, end_block int, budget columbiav1.PrivacyBudget) map[string]columbiav1.PrivacyBudget {
 	demand := make(map[string]columbiav1.PrivacyBudget)
