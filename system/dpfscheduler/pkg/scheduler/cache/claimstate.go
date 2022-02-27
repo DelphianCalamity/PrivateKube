@@ -128,7 +128,6 @@ func (claimState *ClaimState) UpdateDominantShare() (result ShareInfo) {
 	// minN is the min number of blocks
 	pendingRequest := claimState.claim.Spec.Requests[claimState.nextIndex].AllocateRequest
 	priority := claimState.claim.Spec.Priority
-
 	maxN := pendingRequest.MaxNumberOfBlocks
 
 	if maxN == 0 {

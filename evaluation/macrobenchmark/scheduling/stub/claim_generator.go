@@ -1,12 +1,13 @@
 package stub
 
 import (
-	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"math/rand"
 	"time"
+
+	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ClaimGenerator struct {
@@ -63,15 +64,15 @@ func (g *ClaimGenerator) SamplePriority(Type int) int {
 		scale = 10
 	}
 	switch i {
-	    case 0:
+	case 0:
 		priority = 50 * scale
-	    case 1:
-                priority = 10 * scale
-	    case 2:
-                priority = 5 * scale
-	    case 3:
-                priority = 1 * scale
-	    default:
+	case 1:
+		priority = 10 * scale
+	case 2:
+		priority = 5 * scale
+	case 3:
+		priority = 1 * scale
+	default:
 		fmt.Println("Invalid priority")
 	}
 
@@ -83,8 +84,8 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 	annotations := make(map[string]string)
 	annotations["actualStartTime"] = fmt.Sprint(int(time.Now().UnixNano() / 1_000_000))
 	priority := int32(1000*model.Epsilon) * int32(model.NBlocks)
-//	priority :=  g.SamplePriority(model.Type)
-        fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", priority, "\n")
+	//	priority :=  g.SamplePriority(model.Type)
+	fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", priority, "\n")
 	// Create a new claim with flat demand that asks for the NBlock most recent blocks
 	claim := &columbiav1.PrivacyBudgetClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -181,7 +182,6 @@ func (g *ClaimGenerator) RunExponentialDeterministic(claim_names chan string, de
 	}
 }
 
-//
 func (g *ClaimGenerator) RunConstant(claim_names chan string, default_timeout time.Duration, n_blocks int, task_interval time.Duration) {
 	total_duration := time.Duration(g.BlockGen.MaxBlocks+1) * g.BlockGen.BlockInterval
 	end_time := g.BlockGen.StartTime.Add(total_duration)

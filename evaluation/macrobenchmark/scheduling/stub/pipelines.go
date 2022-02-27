@@ -44,7 +44,6 @@ func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
 	}
 }
 
-
 func (g *ClaimGenerator) createFlatDemand(start_block int, end_block int, budget columbiav1.PrivacyBudget) map[string]columbiav1.PrivacyBudget {
 	demand := make(map[string]columbiav1.PrivacyBudget)
 	for i := start_block; i <= end_block; i++ {

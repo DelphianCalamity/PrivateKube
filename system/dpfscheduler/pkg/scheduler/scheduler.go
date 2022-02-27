@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-//	"log"
 	"time"
 
 	schedulercache "columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
@@ -35,8 +34,7 @@ const (
 	NScheme = 0
 	TScheme = 1
 
-	Dpf           = "DPF"
-	FlatRelevance = "FLAT_RELEVANCE"
+	Dpf = "DPF"
 )
 
 type DpfScheduler struct {
@@ -213,7 +211,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 
 	if dpfScheduler.mode == TScheme {
 		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*300_000)*time.Millisecond)
-//		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+		//		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
 	}
 
 	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
@@ -414,7 +412,6 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 }
 
-
 func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
 	time.Sleep(wait_time)
 	for {
@@ -423,14 +420,12 @@ func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Cont
 	}
 }
 
-
 func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
 	klog.Infof("\n\n\nReleasing Budget\n\n\n")
 
 	blockStates := dpfScheduler.flowController.Release()
-
 	start := time.Now()
 	klog.Infof("\n\n\n\nStart-time", start)
 	dpfScheduler.batch.AllocateAvailableBudgets(blockStates)

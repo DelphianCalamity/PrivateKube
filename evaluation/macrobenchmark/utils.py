@@ -268,7 +268,6 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
                 + 1
             )
             try:
-
                 delay.append(
                 (
                     c["status"]["responses"][0]["allocateResponse"]["finishTime"]

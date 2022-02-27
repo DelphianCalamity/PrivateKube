@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/mit-drl/goop"
 	"github.com/mit-drl/goop/solvers"
-//	"k8s.io/klog"
+	//	"k8s.io/klog"
 	"math"
-//	"time"
+	//	"time"
 	"sync"
 )
 
@@ -262,7 +262,7 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	for i := range a {
 		alpha := a[i].Alpha
 		go func(alpha float64, i int) {
-		        defer wg.Done()
+			defer wg.Done()
 
 			if len(demands_per_alpha[alpha]) > 0 && a[i].Epsilon > 0 {
 				tmp[i] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon) / a[i].Epsilon
@@ -273,9 +273,9 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	}
 	wg.Wait()
 
-//	fmt.Println("before softmax\n", arr)
+	//	fmt.Println("before softmax\n", arr)
 	r := Softmax(tmp, 10000)
-//        fmt.Println("After softmax\n", r)
+	//        fmt.Println("After softmax\n", r)
 	// Quick and sloppy conversion back to a map
 	i := 0
 	for k, _ := range knapsack_a {
@@ -300,7 +300,7 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]
 	blockState.Lock()
 	defer blockState.Unlock()
 
-//	start := time.Now()
+	//	start := time.Now()
 
 	var relval map[float64]float64
 	if overflow {
@@ -309,33 +309,30 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]
 	if knapsack {
 		//mu.Lock()
 		//if _, ok := steps_per_block[blockState.id]; !ok {
-	//		steps_per_block[blockState.id] = 0
-	//	}
-          //      steps := steps_per_block[blockState.id]
-	//	mu.Unlock()
+		//		steps_per_block[blockState.id] = 0
+		//	}
+		//      steps := steps_per_block[blockState.id]
+		//	mu.Unlock()
 
-	//	if steps % step_size == 0 {
-			relval = blockState.compute_knapsack(claimCache)
-	//		mu.Lock()
-	//		relval_per_block[blockState.id] = relval
-	//		steps_per_block[blockState.id] += 1
-	//		mu.Unlock()
+		//	if steps % step_size == 0 {
+		relval = blockState.compute_knapsack(claimCache)
+		//		mu.Lock()
+		//		relval_per_block[blockState.id] = relval
+		//		steps_per_block[blockState.id] += 1
+		//		mu.Unlock()
 
-	//	} else {
-	//		relval = relval_per_block[blockState.id]
-	//	}
+		//	} else {
+		//		relval = relval_per_block[blockState.id]
+		//	}
 	}
-
-
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
 		demand := blockState.computeDemandState(reservedBudget, relval)
 		demandMap[claimId] = demand
 	}
-//	time_elapsed := time.Since(start)
-//      fmt.Println("Time elapsed - block- id", blockState.id, time_elapsed, start)
-//	klog.Infof("Time elapsed", blockState.id, time_elapsed)
-
+	//	time_elapsed := time.Since(start)
+	//      fmt.Println("Time elapsed - block- id", blockState.id, time_elapsed, start)
+	//	klog.Infof("Time elapsed", blockState.id, time_elapsed)
 
 	// invalid the old demand states
 	for _, demandState := range blockState.Demands {
@@ -404,4 +401,3 @@ func (blockState *BlockState) GetId() string {
 func (blockState *BlockState) Quota(K int) columbiav1.PrivacyBudget {
 	return blockState.initialBudget.Div(float64(K))
 }
-
