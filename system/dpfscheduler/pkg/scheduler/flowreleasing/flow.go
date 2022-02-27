@@ -5,6 +5,8 @@ import (
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/timing"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/updater"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
+	"k8s.io/klog"
+
 )
 
 type Controller struct {
@@ -40,9 +42,9 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 	for _, blockState := range controller.cache.AllBlocks() {
 		_ = controller.resourceUpdater.ApplyOperationToDataBlock(controller.releaseLatestBudget, blockState)
 
-		// klog.Infof("block [%s] has pending budget %v, available budget %v", blockState.GetId(),
-		// 	blockState.View().Status.PendingBudget.ToString(),
-		// 	blockState.View().Status.AvailableBudget.ToString())
+		klog.Infof("block [%s] has pending budget %v, available budget %v", blockState.GetId(),
+		 	blockState.View().Status.PendingBudget.ToString(),
+		 	blockState.View().Status.AvailableBudget.ToString())
 
 		if !blockState.View().Status.AvailableBudget.IsEmpty() {
 			releasedBlocks = append(releasedBlocks, blockState)
@@ -54,6 +56,7 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 
 // return value indicates whether the data block has been updated
 func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataBlock) error {
+
 	if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
 		return budgetReleaseNotStart()
 	}
@@ -68,35 +71,37 @@ func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataB
 	}
 
 	// if startTime + duration != endTime, override the endTime to make them consistent.
-	var endTime int64
-	if block.Spec.FlowReleasingOption.Duration > 0 {
-		endTime = block.Spec.FlowReleasingOption.StartTime + block.Spec.FlowReleasingOption.Duration
-	} else if block.Spec.FlowReleasingOption.EndTime > 0 {
-		endTime = block.Spec.FlowReleasingOption.EndTime
-	} else {
-		endTime = block.Spec.FlowReleasingOption.StartTime + controller.DefaultDuration
-	}
+//	var endTime int64
+//	if block.Spec.FlowReleasingOption.Duration > 0 {
+//		endTime = block.Spec.FlowReleasingOption.StartTime + block.Spec.FlowReleasingOption.Duration
+//	} else if block.Spec.FlowReleasingOption.EndTime > 0 {
+//		endTime = block.Spec.FlowReleasingOption.EndTime
+//	} else {
+//		endTime = block.Spec.FlowReleasingOption.StartTime + controller.DefaultDuration
+//	}
 
 	// if this is the first time to release budget, set the last releasing time as the start time of
 	// the budget flow.
-	if block.Status.LastBudgetReleaseTime == 0 {
-		block.Status.LastBudgetReleaseTime = block.Spec.FlowReleasingOption.StartTime
-	}
+//	if block.Status.LastBudgetReleaseTime == 0 {
+//		block.Status.LastBudgetReleaseTime = block.Spec.FlowReleasingOption.StartTime
+//	}
 
-	remainingDuration := endTime - block.Status.LastBudgetReleaseTime
-	lastDuration := now - block.Status.LastBudgetReleaseTime
+//	remainingDuration := endTime - block.Status.LastBudgetReleaseTime
+//	lastDuration := now - block.Status.LastBudgetReleaseTime
 
 	//klog.Infof("lastDuration, RemainDuration", lastDuration, remainingDuration)
 	// this evaluation also prevents zero division.
-	if lastDuration >= remainingDuration {
-		releaseBudget(block, block.Status.PendingBudget.Copy(), now)
-		return nil
-	}
+//	if lastDuration >= remainingDuration {
+		//releaseBudget(block, block.Status.PendingBudget.Copy(), now)
+//		releaseBudget(block, block.Spec.InitialBudget.Copy().Div(5), now)
+//		return nil
+//	}
 
-	releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
-	releaseBudget(block, releasingBudget, now)
+	//	releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
+	releaseBudget(block, block.Spec.InitialBudget.Copy().Div(4), now)
 	return nil
 }
+
 
 func releaseBudget(block *columbiav1.PrivateDataBlock, budget columbiav1.PrivacyBudget, timestamp int64) {
 	block.Status.PendingBudget.ISub(budget)

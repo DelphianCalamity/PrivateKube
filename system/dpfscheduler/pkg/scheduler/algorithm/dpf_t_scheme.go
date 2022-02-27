@@ -19,10 +19,11 @@ func NewDpfTSchemeBatch(
 	updater updater.ResourceUpdater,
 	cache_ cache.Cache,
 	p2Chan chan<- string,
+	scheduler string,
 ) *DpfTSchemeBatch {
 
 	return &DpfTSchemeBatch{
-		DpfBatch: *NewDpfBatch(updater, cache_, p2Chan),
+		DpfBatch: *NewDpfBatch(updater, cache_, p2Chan, scheduler),
 	}
 }
 
@@ -53,7 +54,7 @@ func (dpf *DpfTSchemeBatch) batchAllocate(
 		return true
 	}
 
-	dpf.AllocateAvailableBudgets(blockStates)
+//	dpf.AllocateAvailableBudgets(blockStates)
 	return true
 }
 
