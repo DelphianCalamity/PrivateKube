@@ -212,7 +212,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*60_000)*time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*300_000)*time.Millisecond)
 //		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
 	}
 

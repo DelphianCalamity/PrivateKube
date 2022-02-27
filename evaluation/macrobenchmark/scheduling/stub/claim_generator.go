@@ -82,8 +82,8 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 	// Store the timestamp for analysis
 	annotations := make(map[string]string)
 	annotations["actualStartTime"] = fmt.Sprint(int(time.Now().UnixNano() / 1_000_000))
-//	priority := int32(1000*model.Epsilon) * int32(model.NBlocks)
-	priority :=  g.SamplePriority(model.Type)
+	priority := int32(1000*model.Epsilon) * int32(model.NBlocks)
+//	priority :=  g.SamplePriority(model.Type)
         fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", priority, "\n")
 	// Create a new claim with flat demand that asks for the NBlock most recent blocks
 	claim := &columbiav1.PrivacyBudgetClaim{
@@ -151,7 +151,7 @@ func (g *ClaimGenerator) RunExponentialDeterministic(claim_names chan string, de
 	end_time := g.BlockGen.StartTime.Add(total_duration)
 	//total_tasks := int(g.MeanPipelinesPerBlock) * g.BlockGen.MaxBlocks
 	total_tasks := int(g.MeanPipelinesPerBlock) * int(n_blocks)
-	r := rand.New(rand.NewSource(0))
+	r := rand.New(rand.NewSource(100))
 
 	index := 0
 
