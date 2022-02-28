@@ -90,9 +90,15 @@ type DpfScheduler struct {
 
 	batch_scheduling_T float64
 
+	t int
+
 	// default releasing period for DPN-T policy. Unit is ms.
 	// How frequent should the scheduler release budget
 	defaultReleasingPeriod int64
+
+	block_interval_millisecond int
+
+	num_initial_blocks int
 }
 
 type DpfSchedulerOption struct {
@@ -109,13 +115,19 @@ type DpfSchedulerOption struct {
 	// N for DPF-N Policy
 	N int
 
-	// default releasing period for DPN-T policy. Unit is ms.
+	T int
+
+	// default releasing period for DPF-T policy. Unit is ms.
 	DefaultReleasingPeriod int64
 
 	BatchSchedulingT float64
 
-	// default releasing period for DPN-T policy. Unit is ms.
+	// default releasing duration for DPF-T policy. Unit is ms.
 	DefaultReleasingDuration int64
+
+	BlockIntervalMillisecond int
+
+	NumInitialBlocks int
 
 	// Optional: configuration for the streaming counter
 	// E.g. budget for the Laplace mechanism used by the counter (will be converted to RDP if necessary)
@@ -171,13 +183,15 @@ func New(privacyResourceClient privacyclientset.Interface,
 	scheduler.schedulingQueue = queue.NewSchedulingQueue(scheduler.timer.Now(), option.DefaultTimeout)
 	scheduler.updater = updater.NewResourceUpdater(privacyResourceClient, schedulerCache)
 	scheduler.scheduler = option.Scheduler
-
+	scheduler.block_interval_millisecond = option.BlockIntervalMillisecond
+	scheduler.num_initial_blocks = option.NumInitialBlocks
 	scheduler.allocChan = make(chan string, 16)
 
 	if option.Mode == TScheme {
 		scheduler.batch = algorithm.NewDpfTSchemeBatch(*scheduler.updater, schedulerCache, scheduler.allocChan, scheduler.scheduler)
 		releaseOption := flowreleasing.ReleaseOption{
 			DefaultDuration: option.DefaultReleasingDuration,
+			T:               option.T,
 		}
 		scheduler.flowController = flowreleasing.MakeController(schedulerCache, scheduler.updater, scheduler.timer, releaseOption)
 		scheduler.mode = TScheme
@@ -215,7 +229,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*300_000)*time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration((dpfScheduler.num_initial_blocks+1)*dpfScheduler.block_interval_millisecond)*time.Millisecond)
 		//		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
 	}
 

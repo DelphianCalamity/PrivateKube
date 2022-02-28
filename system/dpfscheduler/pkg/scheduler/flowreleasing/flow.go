@@ -17,6 +17,7 @@ type Controller struct {
 
 type ReleaseOption struct {
 	DefaultDuration int64
+	T               int
 }
 
 func MakeController(
@@ -55,48 +56,51 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 
 // return value indicates whether the data block has been updated
 func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataBlock) error {
-	if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
-		return budgetReleaseNotStart()
-	}
+	//if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
+	//	return budgetReleaseNotStart()
+	//}
+	//
+	//if block.Status.PendingBudget.IsEmpty() {
+	//	return noPendingBudget()
+	//}
+	//
+	//now := controller.timer.Now()
+	//if now <= block.Spec.FlowReleasingOption.StartTime {
+	//	return budgetReleaseNotStart()
+	//}
+	//
+	//// if startTime + duration != endTime, override the endTime to make them consistent.
+	//var endTime int64
+	//if block.Spec.FlowReleasingOption.Duration > 0 {
+	//	endTime = block.Spec.FlowReleasingOption.StartTime + block.Spec.FlowReleasingOption.Duration
+	//} else if block.Spec.FlowReleasingOption.EndTime > 0 {
+	//	endTime = block.Spec.FlowReleasingOption.EndTime
+	//} else {
+	//	endTime = block.Spec.FlowReleasingOption.StartTime + controller.DefaultDuration
+	//}
+	//
+	//// if this is the first time to release budget, set the last releasing time as the start time of
+	//// the budget flow.
+	//if block.Status.LastBudgetReleaseTime == 0 {
+	//	block.Status.LastBudgetReleaseTime = block.Spec.FlowReleasingOption.StartTime
+	//}
+	//
+	//remainingDuration := endTime - block.Status.LastBudgetReleaseTime
+	//lastDuration := now - block.Status.LastBudgetReleaseTime
+	//
+	////klog.Infof("lastDuration, RemainDuration", lastDuration, remainingDuration)
+	//// this evaluation also prevents zero division.
+	//if lastDuration >= remainingDuration {
+	//	releaseBudget(block, block.Status.PendingBudget.Copy(), now)
+	//	return nil
+	//}
+	//
+	//releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
+	//releaseBudget(block, releasingBudget, now)
 
-	if block.Status.PendingBudget.IsEmpty() {
-		return noPendingBudget()
-	}
-
+	// Simplify budget release - now start time is when all initial blocks are ready by default
 	now := controller.timer.Now()
-	if now <= block.Spec.FlowReleasingOption.StartTime {
-		return budgetReleaseNotStart()
-	}
-
-	// if startTime + duration != endTime, override the endTime to make them consistent.
-	//	var endTime int64
-	//	if block.Spec.FlowReleasingOption.Duration > 0 {
-	//		endTime = block.Spec.FlowReleasingOption.StartTime + block.Spec.FlowReleasingOption.Duration
-	//	} else if block.Spec.FlowReleasingOption.EndTime > 0 {
-	//		endTime = block.Spec.FlowReleasingOption.EndTime
-	//	} else {
-	//		endTime = block.Spec.FlowReleasingOption.StartTime + controller.DefaultDuration
-	//	}
-
-	// if this is the first time to release budget, set the last releasing time as the start time of
-	// the budget flow.
-	//	if block.Status.LastBudgetReleaseTime == 0 {
-	//		block.Status.LastBudgetReleaseTime = block.Spec.FlowReleasingOption.StartTime
-	//	}
-
-	//	remainingDuration := endTime - block.Status.LastBudgetReleaseTime
-	//	lastDuration := now - block.Status.LastBudgetReleaseTime
-
-	//klog.Infof("lastDuration, RemainDuration", lastDuration, remainingDuration)
-	// this evaluation also prevents zero division.
-	//	if lastDuration >= remainingDuration {
-	//releaseBudget(block, block.Status.PendingBudget.Copy(), now)
-	//		releaseBudget(block, block.Spec.InitialBudget.Copy().Div(5), now)
-	//		return nil
-	//	}
-
-	//	releasingBudget := block.Status.PendingBudget.Mul(float64(lastDuration) / float64(remainingDuration))
-	releaseBudget(block, block.Spec.InitialBudget.Copy().Div(4), now)
+	releaseBudget(block, block.Spec.InitialBudget.Copy().Div(float64(controller.ReleaseOption.T)), now)
 	return nil
 }
 
