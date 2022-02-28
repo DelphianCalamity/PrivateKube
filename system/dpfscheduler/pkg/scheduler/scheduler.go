@@ -216,7 +216,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 
 	if dpfScheduler.mode == TScheme {
 		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration(11*300_000)*time.Millisecond)
-		//		go dpfScheduler.flowReleaseAndAllocate(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+		//		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
 	}
 
 	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
@@ -419,17 +419,17 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
 	time.Sleep(wait_time)
-	for {
-		dpfScheduler.flowReleaseAndAllocate()
-		time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
-	}
+	//for {
+	go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+	//dpfScheduler.flowReleaseAndAllocate()
+	//time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+	//}
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
 	klog.Infof("\n\n\nReleasing Budget\n\n\n")
-
 	blockStates := dpfScheduler.flowController.Release()
 	start := time.Now()
 	klog.Infof("\n\n\n\nStart-time", start)

@@ -144,7 +144,7 @@ func run_exponential(scheduler_method, mode string, DPF_T int, dpf_release_perio
 		fmt.Println("release time\n\n\n", dpf_release_period_block)
 		fmt.Println("dpf_release_period_milliseconds\n\n\n", dpf_release_period_millisecond)
 
-		s.StartT(timeout, DPF_T, dpf_release_period_millisecond, batch_scheduling_T, scheduler_method)
+		s.StartT(timeout, DPF_T, batch_scheduling_T, dpf_release_period_millisecond, scheduler_method)
 	default:
 		log.Fatal("Invalid DPF mode", mode)
 	}
