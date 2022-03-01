@@ -41,7 +41,7 @@ def analyze(config):
     for _, claim in claims_df.iterrows():
 
         if claim["success"] == True:
-            total_profit += claim["priority"]
+            total_profit += claim["profit"]
     config["realized_profit"] = total_profit
     mice_path = config["mice"]
     if "/user-time/" in mice_path:

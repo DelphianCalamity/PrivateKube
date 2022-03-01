@@ -72,7 +72,7 @@ func (claimState *ClaimState) UpdateTotalCost() (result ShareInfo) {
 	// maxN is the max number of blocks
 	// minN is the min number of blocks
 	pendingRequest := claimState.claim.Spec.Requests[claimState.nextIndex].AllocateRequest
-	priority := claimState.claim.Spec.Priority
+	profit := claimState.claim.Spec.Profit
 	maxN := pendingRequest.MaxNumberOfBlocks
 
 	if maxN == 0 {
@@ -110,9 +110,9 @@ func (claimState *ClaimState) UpdateTotalCost() (result ShareInfo) {
 	if result.Cost <= 0 {
 		result.Efficiency = math.Inf(1)
 	} else {
-		result.Efficiency = float64(priority) / result.Cost
+		result.Efficiency = profit / result.Cost
 	}
-	result.Profit = priority
+	result.Profit = profit
 	return
 }
 
@@ -127,7 +127,7 @@ func (claimState *ClaimState) UpdateDominantShare() (result ShareInfo) {
 	// maxN is the max number of blocks
 	// minN is the min number of blocks
 	pendingRequest := claimState.claim.Spec.Requests[claimState.nextIndex].AllocateRequest
-	priority := claimState.claim.Spec.Priority
+	profit := claimState.claim.Spec.Profit
 	maxN := pendingRequest.MaxNumberOfBlocks
 
 	if maxN == 0 {
@@ -162,11 +162,11 @@ func (claimState *ClaimState) UpdateDominantShare() (result ShareInfo) {
 	result.AvailableBlocks = make([]string, 0, maxN)
 	for _, pair := range pairs[:maxN] {
 		//result.DominantShare = math.Max(result.DominantShare, pair.share)
-		result.Efficiency = math.Max(result.Efficiency, pair.share/float64(priority))
+		result.Efficiency = math.Max(result.Efficiency, pair.share/profit)
 		result.AvailableBlocks = append(result.AvailableBlocks, pair.blockId)
 	}
 	result.Efficiency = 1 / result.Efficiency
-	result.Profit = priority
+	result.Profit = profit
 
 	return
 }

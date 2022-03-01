@@ -218,10 +218,10 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
     block_index = []
     arrival = []
     delay = []
-    priority = []
+    profit = []
     empty_claims = 0
     for c in claims:
-        print(c["spec"]["priority"])
+        print(c["spec"]["profit"])
         try:
             name.append(c["metadata"]["name"])
             n = (
@@ -277,8 +277,8 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
                 )
             except:
                 delay.append(0)
-            priority.append(
-                    c["spec"]["priority"]
+            profit.append(
+                    c["spec"]["profit"]
             )
         except KeyError:
             empty_claims += 1
@@ -290,7 +290,7 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
     print(len(mice))
     print(len(arrival))
     print(len(delay))
-    print(len(priority))
+    print(len(profit))
     print(len(block_index))
     if empty_claims > failure_ratio * len(claims):
         raise Exception(
@@ -306,7 +306,7 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
             "mice": mice,
             "arrival": arrival,
             "delay": delay,
-            "priority": priority,
+            "profit": profit,
         }
     )
     claims_df["size"] = np.log(

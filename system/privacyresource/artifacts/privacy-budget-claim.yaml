@@ -244,8 +244,8 @@ spec:
                         type: string
                       resourceVersion:
                         type: string
-                priority:
-                  type: integer
+                profit:
+                  type: number
             status:
               type: object
               properties:

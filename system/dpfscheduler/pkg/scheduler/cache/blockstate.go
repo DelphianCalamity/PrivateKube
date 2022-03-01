@@ -227,7 +227,7 @@ func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a f
 func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float64]float64 {
 	knapsack_a := map[float64]float64{}
 	demands_per_alpha := map[float64][]float64{}
-	priorities_per_alpha := map[float64][]int32{}
+	priorities_per_alpha := map[float64][]float64{}
 
 	for claim_id, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
 		reservedBudget.ToRenyi()
@@ -237,12 +237,12 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 			alpha := r[i].Alpha
 			if _, ok := demands_per_alpha[alpha]; !ok {
 				demands_per_alpha[alpha] = make([]float64, 0, 16)
-				priorities_per_alpha[alpha] = make([]int32, 0, 16)
+				priorities_per_alpha[alpha] = make([]float64, 0, 16)
 			}
 			// Fill the array with all the demands for this block/alpha
 			if r[i].Epsilon > 0 {
 				demands_per_alpha[alpha] = append(demands_per_alpha[alpha], r[i].Epsilon)
-				priorities_per_alpha[alpha] = append(priorities_per_alpha[alpha], claimCache.Get(claim_id).claim.Spec.Priority)
+				priorities_per_alpha[alpha] = append(priorities_per_alpha[alpha], claimCache.Get(claim_id).claim.Spec.Profit)
 			}
 		}
 	}

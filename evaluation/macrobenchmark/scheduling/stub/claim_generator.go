@@ -33,10 +33,10 @@ func MakeSampler(rdp bool, mice_ratio float64, mice_path string, elephants_path 
 	m := make([]Pipeline, 0, len(mice))
 	e := make([]Pipeline, 0, len(elephants))
 	for name, raw_pipeline := range mice {
-		m = append(m, NewPipeline(name, raw_pipeline, rdp, 0))
+		m = append(m, NewPipeline(name, raw_pipeline, rdp))
 	}
 	for name, raw_pipeline := range elephants {
-		e = append(e, NewPipeline(name, raw_pipeline, rdp, 1))
+		e = append(e, NewPipeline(name, raw_pipeline, rdp))
 	}
 	return MiceElphantsSampler{
 		MiceRatio: mice_ratio,
@@ -56,36 +56,12 @@ func (p MiceElphantsSampler) SampleOne(r *rand.Rand) Pipeline {
 	return p.Elephants[i]
 }
 
-func (g *ClaimGenerator) SamplePriority(Type int) int {
-	i := g.Rand.Intn(4)
-	priority := 1
-	scale := 1
-	if Type == 1 {
-		scale = 10
-	}
-	switch i {
-	case 0:
-		priority = 50 * scale
-	case 1:
-		priority = 10 * scale
-	case 2:
-		priority = 5 * scale
-	case 3:
-		priority = 1 * scale
-	default:
-		fmt.Println("Invalid priority")
-	}
-
-	return priority
-}
-
 func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout time.Duration) (*columbiav1.PrivacyBudgetClaim, error) {
 	// Store the timestamp for analysis
 	annotations := make(map[string]string)
 	annotations["actualStartTime"] = fmt.Sprint(int(time.Now().UnixNano() / 1_000_000))
-	priority := int32(1000*model.Epsilon) * int32(model.NBlocks)
-	//	priority :=  g.SamplePriority(model.Type)
-	fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", priority, "\n")
+	//profit := model.Epsilon * float64(model.NBlocks)
+	fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", model.Profit, "\n")
 	// Create a new claim with flat demand that asks for the NBlock most recent blocks
 	claim := &columbiav1.PrivacyBudgetClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -96,7 +72,7 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 		},
 		Spec: columbiav1.PrivacyBudgetClaimSpec{
 
-			Priority: int32(priority),
+			Priority: model.profit,
 			Requests: []columbiav1.Request{
 				{
 					Identifier: "1",

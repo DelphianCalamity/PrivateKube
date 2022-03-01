@@ -10,10 +10,10 @@ type Pipeline struct {
 	Demand  columbiav1.PrivacyBudget
 	NBlocks int
 	Epsilon float64
-	Type    int
+	Profit  float64
 }
 
-func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
+func NewPipeline(name string, p RawPipeline, rdp bool) Pipeline {
 	demand := columbiav1.PrivacyBudget{}
 	if rdp {
 		b := make(columbiav1.RenyiBudget, len(p.Alphas))
@@ -40,7 +40,7 @@ func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
 		Demand:  demand,
 		NBlocks: p.NBlocks / RAW_BLOCKS_MULTIPLIER,
 		Epsilon: p.Epsilon,
-		Type:    Type,
+		Profit:  p.Profit,
 	}
 }
 
