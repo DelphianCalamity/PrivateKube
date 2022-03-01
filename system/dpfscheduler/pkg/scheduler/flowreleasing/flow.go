@@ -99,6 +99,7 @@ func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataB
 	//releaseBudget(block, releasingBudget, now)
 
 	// Simplify budget release - now start time is when all initial blocks are ready by default
+	klog.Infof("DPF T", float64(controller.ReleaseOption.T))
 	releaseBudget(block, block.Spec.InitialBudget.Copy().Div(float64(controller.ReleaseOption.T)), now)
 	return nil
 }
