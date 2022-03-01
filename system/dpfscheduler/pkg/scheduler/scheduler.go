@@ -228,7 +228,7 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 		//		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
 	}
 
-	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
+	//go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
 
 	wait.UntilWithContext(ctx, dpfScheduler.scheduleOne, 0)
 
