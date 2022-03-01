@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	DPF            = "DPF"
-	FLAT_RELEVANCE = "FLAT_RELEVANCE"
+	DPF                = "DPF"
+	OVERFLOW_RELEVANCE = "OVERFLOW_RELEVANCE"
+	SOFT_KNAPSACK      = "SOFT_KNAPSACK"
 )
 
 func GetBlockId(block *columbiav1.PrivateDataBlock) string {

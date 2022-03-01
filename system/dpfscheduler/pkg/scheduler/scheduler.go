@@ -173,7 +173,7 @@ func New(privacyResourceClient privacyclientset.Interface,
 	stopCh <-chan struct{},
 	option DpfSchedulerOption) (*DpfScheduler, error) {
 	// this schedulerCache will be used by the scheduler and its algorithm engine
-	schedulerCache := schedulercache.NewStateCache(option.StreamingCounterOptions)
+	schedulerCache := schedulercache.NewStateCache(option.Scheduler, option.StreamingCounterOptions)
 
 	scheduler := new(DpfScheduler)
 	scheduler.privateResourceClient = privacyResourceClient

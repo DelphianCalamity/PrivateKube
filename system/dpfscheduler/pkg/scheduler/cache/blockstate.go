@@ -28,10 +28,6 @@ type BlockState struct {
 	id            string
 }
 
-var dpf bool = false
-var overflow bool = false
-var knapsack bool = true
-
 func NewBlockState(block *columbiav1.PrivateDataBlock) *BlockState {
 	return &BlockState{
 		block:         block,
@@ -50,20 +46,17 @@ func (blockState *BlockState) GetReservedMap() map[string]columbiav1.PrivacyBudg
 	return reservedMap
 }
 
-func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget, relval_a map[float64]float64) *DemandState {
+func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget, relval_a map[float64]float64, schedulerName string) *DemandState {
 	var initialBudget columbiav1.PrivacyBudget
 	initialBudget = blockState.block.Spec.InitialBudget
 	availableBudget := blockState.block.Status.AvailableBudget
 
 	share := 0.0
 	blockCost := 0.0
-	// DPF
-	if dpf {
+	if schedulerName == util.DPF {
 		share = getDominantShare(budget, initialBudget)
-	}
-	// Overflow or Knapsack
-	if overflow || knapsack {
-		blockCost = getPerBlockCost(budget, availableBudget, relval_a)
+	} else if schedulerName == util.OVERFLOW_RELEVANCE || schedulerName == util.SOFT_KNAPSACK {
+		blockCost = getPerBlockCost(budget, availableBudget, relval_a, schedulerName)
 	}
 
 	return &DemandState{
@@ -74,26 +67,25 @@ func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget
 	}
 }
 
-func getPerBlockCost(budget columbiav1.PrivacyBudget, availableBudget columbiav1.PrivacyBudget, relval_a map[float64]float64) float64 {
+func getPerBlockCost(budget columbiav1.PrivacyBudget, availableBudget columbiav1.PrivacyBudget, relval_a map[float64]float64, schedulerName string) float64 {
 	budget.ToRenyi()
 	availableBudget.ToRenyi()
-	return getPerBlockCostRenyi(budget.Renyi, availableBudget.Renyi, relval_a)
+	return getPerBlockCostRenyi(budget.Renyi, availableBudget.Renyi, relval_a, schedulerName)
 }
 
-func getPerBlockCostRenyi(budget columbiav1.RenyiBudget, availableBudget columbiav1.RenyiBudget, relval_a map[float64]float64) float64 {
+func getPerBlockCostRenyi(budget columbiav1.RenyiBudget, availableBudget columbiav1.RenyiBudget, relval_a map[float64]float64, schedulerName string) float64 {
 	blockCost := 0.0
 	b, _ := columbiav1.ReduceToSameSupport(budget, availableBudget)
 	for i := range b {
 		relval := relval_a[b[i].Alpha] //a[i].Epsilon
-		if overflow {
+		if schedulerName == util.OVERFLOW_RELEVANCE {
 			if relval > 0 {
 				blockCost += b[i].Epsilon / relval
 			} else {
 				blockCost = 0
 				break
 			}
-		}
-		if knapsack {
+		} else if schedulerName == util.SOFT_KNAPSACK {
 			blockCost += b[i].Epsilon * relval
 		}
 	}
@@ -278,7 +270,7 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	//        fmt.Println("After softmax\n", r)
 	// Quick and sloppy conversion back to a map
 	i := 0
-	for k, _ := range knapsack_a {
+	for k := range knapsack_a {
 		knapsack_a[k] = r[i]
 		i++
 	}
@@ -291,43 +283,22 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 // - availability (enough eps/delta budget, or one alpha positive)
 // - valid
 
-//var steps_per_block map[string]int = make(map[string]int)
-//var relval_per_block map[string]map[float64]float64 = make(map[string]map[float64]float64)
-//var mu sync.Mutex = sync.Mutex{}
-//var step_size int = 50
-
-func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache) map[string]*DemandState {
+func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache, schedulerName string) map[string]*DemandState {
 	blockState.Lock()
 	defer blockState.Unlock()
 
 	//	start := time.Now()
 
 	var relval map[float64]float64
-	if overflow {
+
+	if schedulerName == util.OVERFLOW_RELEVANCE {
 		relval = blockState.compute_block_overflow()
-	}
-	if knapsack {
-		//mu.Lock()
-		//if _, ok := steps_per_block[blockState.id]; !ok {
-		//		steps_per_block[blockState.id] = 0
-		//	}
-		//      steps := steps_per_block[blockState.id]
-		//	mu.Unlock()
-
-		//	if steps % step_size == 0 {
+	} else if schedulerName == util.SOFT_KNAPSACK {
 		relval = blockState.compute_knapsack(claimCache)
-		//		mu.Lock()
-		//		relval_per_block[blockState.id] = relval
-		//		steps_per_block[blockState.id] += 1
-		//		mu.Unlock()
-
-		//	} else {
-		//		relval = relval_per_block[blockState.id]
-		//	}
 	}
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
-		demand := blockState.computeDemandState(reservedBudget, relval)
+		demand := blockState.computeDemandState(reservedBudget, relval, schedulerName)
 		demandMap[claimId] = demand
 	}
 	//	time_elapsed := time.Since(start)
