@@ -72,7 +72,7 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 		},
 		Spec: columbiav1.PrivacyBudgetClaimSpec{
 
-			Profit: model.profit,
+			Profit: model.Profit,
 			Requests: []columbiav1.Request{
 				{
 					Identifier: "1",
