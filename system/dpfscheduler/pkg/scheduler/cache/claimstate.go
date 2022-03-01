@@ -27,7 +27,7 @@ type ShareInfo struct {
 	DominantShare     float64
 	AvailableBlocks   []string
 	IsReadyToAllocate bool
-	Profit            int32
+	Profit            float64
 }
 
 func NewClaimState(claim *columbiav1.PrivacyBudgetClaim) *ClaimState {

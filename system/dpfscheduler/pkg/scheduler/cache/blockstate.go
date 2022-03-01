@@ -185,7 +185,7 @@ func Softmax(x []float64, T float64) []float64 {
 	return r
 }
 
-func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []int32, a float64) float64 {
+func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []float64, a float64) float64 {
 	var mba float64
 	// Instantiate a new model
 	m := goop.NewModel()
