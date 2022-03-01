@@ -42,7 +42,8 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 	for _, blockState := range controller.cache.AllBlocks() {
 		_ = controller.resourceUpdater.ApplyOperationToDataBlock(controller.releaseLatestBudget, blockState)
 
-		klog.Infof("block [%s] has pending budget %v, available budget %v", blockState.GetId(),
+		klog.Infof("block [%s] has initial budget %v, pending budget %v, available budget %v", blockState.GetId(),
+			blockState.View().Spec.InitialBudget.ToString(),
 			blockState.View().Status.PendingBudget.ToString(),
 			blockState.View().Status.AvailableBudget.ToString())
 
@@ -61,6 +62,7 @@ func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataB
 	}
 
 	if block.Status.PendingBudget.IsEmpty() {
+		klog.Infof("EMPTY PENDING")
 		return noPendingBudget()
 	}
 
