@@ -39,12 +39,11 @@ func (s *Stub) StartN(timeout time.Duration, N int, scheduler_method string) {
 	s.PrivacyScheduler = startScheduler(s.Client, option)
 }
 
-func (s *Stub) StartT(timeout time.Duration, DPF_T int, batch_scheduling_T float64, dpf_release_period_millisecond int, scheduler_method string, block_interval_millisecond int, num_initial_blocks int) {
+func (s *Stub) StartT(timeout time.Duration, DPF_T int, dpf_release_period_millisecond int, scheduler_method string, block_interval_millisecond int, num_initial_blocks int) {
 	option := scheduler.DefaultTSchemeOption()
 	option.DefaultTimeout = int64(timeout / time.Millisecond)
 	option.DefaultReleasingPeriod = int64(dpf_release_period_millisecond)
 	option.DefaultReleasingDuration = int64(DPF_T) * int64(dpf_release_period_millisecond)
-	option.BatchSchedulingT = batch_scheduling_T
 	option.Scheduler = scheduler_method
 	option.T = DPF_T
 	option.BlockIntervalMillisecond = block_interval_millisecond

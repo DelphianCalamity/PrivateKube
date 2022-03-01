@@ -88,8 +88,6 @@ type DpfScheduler struct {
 
 	scheduler string
 
-	batch_scheduling_T float64
-
 	t int
 
 	// default releasing period for DPN-T policy. Unit is ms.
@@ -119,8 +117,6 @@ type DpfSchedulerOption struct {
 
 	// default releasing period for DPF-T policy. Unit is ms.
 	DefaultReleasingPeriod int64
-
-	BatchSchedulingT float64
 
 	// default releasing duration for DPF-T policy. Unit is ms.
 	DefaultReleasingDuration int64
@@ -196,7 +192,6 @@ func New(privacyResourceClient privacyclientset.Interface,
 		scheduler.flowController = flowreleasing.MakeController(schedulerCache, scheduler.updater, scheduler.timer, releaseOption)
 		scheduler.mode = TScheme
 		scheduler.defaultReleasingPeriod = option.DefaultReleasingPeriod
-		scheduler.batch_scheduling_T = option.BatchSchedulingT
 	} else {
 		scheduler.batch = algorithm.NewDpfNSchemeBatch(option.N, *scheduler.updater, schedulerCache, scheduler.allocChan, scheduler.scheduler)
 		scheduler.mode = NScheme
