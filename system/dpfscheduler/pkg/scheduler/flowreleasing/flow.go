@@ -56,19 +56,19 @@ func (controller *Controller) Release() []*schedulercache.BlockState {
 
 // return value indicates whether the data block has been updated
 func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataBlock) error {
-	//if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
-	//	return budgetReleaseNotStart()
-	//}
-	//
-	//if block.Status.PendingBudget.IsEmpty() {
-	//	return noPendingBudget()
-	//}
-	//
-	//now := controller.timer.Now()
-	//if now <= block.Spec.FlowReleasingOption.StartTime {
-	//	return budgetReleaseNotStart()
-	//}
-	//
+	if block.Spec.FlowReleasingOption == nil || block.Spec.FlowReleasingOption.StartTime == 0 {
+		return budgetReleaseNotStart()
+	}
+
+	if block.Status.PendingBudget.IsEmpty() {
+		return noPendingBudget()
+	}
+
+	now := controller.timer.Now()
+	if now <= block.Spec.FlowReleasingOption.StartTime {
+		return budgetReleaseNotStart()
+	}
+
 	//// if startTime + duration != endTime, override the endTime to make them consistent.
 	//var endTime int64
 	//if block.Spec.FlowReleasingOption.Duration > 0 {
@@ -99,7 +99,6 @@ func (controller *Controller) releaseLatestBudget(block *columbiav1.PrivateDataB
 	//releaseBudget(block, releasingBudget, now)
 
 	// Simplify budget release - now start time is when all initial blocks are ready by default
-	now := controller.timer.Now()
 	releaseBudget(block, block.Spec.InitialBudget.Copy().Div(float64(controller.ReleaseOption.T)), now)
 	return nil
 }
