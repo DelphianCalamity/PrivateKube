@@ -3,9 +3,9 @@ package stub
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
-	"sigs.k8s.io/yaml"
 	"strings"
 )
 
