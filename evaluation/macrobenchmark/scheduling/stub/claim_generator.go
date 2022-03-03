@@ -45,27 +45,27 @@ func MakeSampler(rdp bool, mice_ratio float64, mice_path string, elephants_path 
 	}
 }
 
-func (g *ClaimGenerator) SampleProfit(Type int) int {
+func (g *ClaimGenerator) SampleProfit(Type int) float64 {
 	i := g.Rand.Intn(4)
-	priority := 1
-	scale := 1
+	profit := 1.0
+	scale := 1.0
 	if Type == 1 {
 		scale = 10
 	}
 	switch i {
 	case 0:
-		priority = 50 * scale
+		profit = 50 * scale
 	case 1:
-		priority = 10 * scale
+		profit = 10 * scale
 	case 2:
-		priority = 5 * scale
+		profit = 5 * scale
 	case 3:
-		priority = 1 * scale
+		profit = 1 * scale
 	default:
 		fmt.Println("Invalid priority")
 	}
 
-	return priority
+	return profit
 }
 
 func (p MiceElphantsSampler) SampleOne(r *rand.Rand) Pipeline {
