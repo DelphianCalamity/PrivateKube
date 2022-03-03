@@ -33,16 +33,43 @@ func MakeSampler(rdp bool, mice_ratio float64, mice_path string, elephants_path 
 	m := make([]Pipeline, 0, len(mice))
 	e := make([]Pipeline, 0, len(elephants))
 	for name, raw_pipeline := range mice {
-		m = append(m, NewPipeline(name, raw_pipeline, rdp))
+		m = append(m, NewPipeline(name, raw_pipeline, rdp, 0))
 	}
 	for name, raw_pipeline := range elephants {
-		e = append(e, NewPipeline(name, raw_pipeline, rdp))
+		e = append(e, NewPipeline(name, raw_pipeline, rdp, 1))
 	}
 	return MiceElphantsSampler{
 		MiceRatio: mice_ratio,
 		Mice:      m,
 		Elephants: e,
 	}
+}
+if profits == "grid":
+if task_category == "elephants":
+profit = "500:0.25, 100:0.25, 50:0.25, 10:0.25" else:
+profit = "50:0.25, 10:0.25, 5:0.25, 1:0.25"
+
+func (g *ClaimGenerator) SampleProfit(Type int) int {
+	i := g.Rand.Intn(4)
+	priority := 1
+	scale := 1
+	if Type == 1 {
+		scale = 10
+	}
+	switch i {
+	case 0:
+		priority = 50 * scale
+	case 1:
+		priority = 10 * scale
+	case 2:
+		priority = 5 * scale
+	case 3:
+		priority = 1 * scale
+	default:
+		fmt.Println("Invalid priority")
+	}
+
+	return priority
 }
 
 func (p MiceElphantsSampler) SampleOne(r *rand.Rand) Pipeline {
@@ -61,6 +88,8 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 	annotations := make(map[string]string)
 	annotations["actualStartTime"] = fmt.Sprint(int(time.Now().UnixNano() / 1_000_000))
 	//profit := model.Epsilon * float64(model.NBlocks)
+	profit := g.SampleProfit(model.Type)
+
 	fmt.Println("%s-%d-%s", model.Name, block_index, RandId(), "Profit:", model.Profit, "\n")
 	// Create a new claim with flat demand that asks for the NBlock most recent blocks
 	claim := &columbiav1.PrivacyBudgetClaim{
@@ -72,7 +101,7 @@ func (g *ClaimGenerator) createClaim(block_index int, model Pipeline, timeout ti
 		},
 		Spec: columbiav1.PrivacyBudgetClaimSpec{
 
-			Profit: model.Profit,
+			Profit: profit, //model.Profit,
 			Requests: []columbiav1.Request{
 				{
 					Identifier: "1",
