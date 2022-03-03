@@ -24,7 +24,7 @@ func NewBlockGenerator(stub *Stub, dataset string, epsilon float64, delta float6
 	return &BlockGenerator{
 		Stub:          stub,
 		Dataset:       dataset,
-		InitialBudget: columbiav1.NewPrivacyBudget(epsilon, delta, True),
+		InitialBudget: columbiav1.NewPrivacyBudget(epsilon, delta, true),
 		MaxBlocks:     maxBlocks,
 		BlockInterval: interval,
 		StartTime:     time.Time{},
