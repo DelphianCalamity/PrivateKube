@@ -44,10 +44,6 @@ func MakeSampler(rdp bool, mice_ratio float64, mice_path string, elephants_path 
 		Elephants: e,
 	}
 }
-if profits == "grid":
-if task_category == "elephants":
-profit = "500:0.25, 100:0.25, 50:0.25, 10:0.25" else:
-profit = "50:0.25, 10:0.25, 5:0.25, 1:0.25"
 
 func (g *ClaimGenerator) SampleProfit(Type int) int {
 	i := g.Rand.Intn(4)
