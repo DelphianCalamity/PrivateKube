@@ -19,7 +19,7 @@ const (
 	ErrorType      = -1
 )
 
-var RenyiAlphas = [...]float64{1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 8, 16, 32, 64, 1000000}
+var RenyiAlphas = [...]float64{1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 8, 16, 32, 64}
 
 type PrivacyBudgetType int
 
