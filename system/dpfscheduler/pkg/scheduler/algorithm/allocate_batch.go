@@ -2,7 +2,6 @@ package algorithm
 
 import (
 	"fmt"
-	"math"
 	"sync"
 
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
@@ -275,9 +274,8 @@ func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
 		}
 
 		var shareClaim_ *cache.ClaimState
-		var val_ = math.MaxFloat64
+		var val_ = 0.0 //math.MaxFloat64
 		var shareInfo_ cache.ShareInfo
-
 		// Browse claims to find the smallest and remove those which are impossible to allocate
 		for claimId, shareInfo := range claimShareMap {
 			if !shareInfo.IsReadyToAllocate {
@@ -299,7 +297,6 @@ func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
 			//	}
 			//}
 
-			val_ = 0.0
 			if shareInfo.Efficiency > val_ {
 				val_ = shareInfo.Efficiency
 				shareClaim_ = dpf.cache.GetClaim(claimId)
