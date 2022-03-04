@@ -196,7 +196,9 @@ func Argmax(x []float64) []float64 {
 			max_i = i
 		}
 	}
-	r[max_i] = max_v
+	if len(x) > 0 {
+		r[max_i] = max_v
+	}
 	return r
 }
 
