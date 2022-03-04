@@ -185,6 +185,21 @@ func Softmax(x []float64, T float64) []float64 {
 	return r
 }
 
+func Argmax(x []float64) []float64 {
+	r := make([]float64, len(x))
+	max_v := 0.0
+	max_i := 0
+	for i, v := range x {
+		r[i] = 0.0
+		if v > max_v {
+			max_v = v
+			max_i = i
+		}
+	}
+	r[max_i] = max_v
+	return r
+}
+
 func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []float64, a float64) float64 {
 	var mba float64
 	// Instantiate a new model
@@ -265,9 +280,8 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	}
 	wg.Wait()
 
-	//	fmt.Println("before softmax\n", arr)
-	r := Softmax(tmp, 10000)
-	//        fmt.Println("After softmax\n", r)
+	//r := Softmax(tmp, 10000)
+	r := Argmax(tmp)
 	// Quick and sloppy conversion back to a map
 	i := 0
 	for k := range knapsack_a {
