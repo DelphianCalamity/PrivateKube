@@ -264,7 +264,6 @@ func (dpf *DpfBatch) updateAffectedClaims(claimShareMap map[string]cache.ShareIn
 // AllocateAvailableBudgets is the main loop of DPF
 // Takes a batch of tasks + a state and tries to allocate everything
 func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
-	//fmt.Println("\n\nALLOCATING CYCLE\n")
 
 	// Compute the dominant shares
 	claimShareMap := dpf.getInfluencedClaims(blockStates)
@@ -283,21 +282,7 @@ func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
 				continue
 			}
 
-			//if dpf.scheduler == util.DPF {
-			//	if shareInfo.DominantShare < val_ {
-			//		val_ = shareInfo.DominantShare
-			//		shareClaim_ = dpf.cache.GetClaim(claimId)
-			//		shareInfo_ = shareInfo
-			//	}
-			//} else {
-			//	if shareInfo.Cost < val_ {
-			//		val_ = shareInfo.Cost
-			//		shareClaim_ = dpf.cache.GetClaim(claimId)
-			//		shareInfo_ = shareInfo
-			//	}
-			//}
-
-			if shareInfo.Efficiency > val_ {
+			if shareInfo.Efficiency >= val_ {
 				val_ = shareInfo.Efficiency
 				shareClaim_ = dpf.cache.GetClaim(claimId)
 				shareInfo_ = shareInfo
