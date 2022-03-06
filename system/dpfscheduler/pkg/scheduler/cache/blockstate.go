@@ -26,6 +26,8 @@ type BlockState struct {
 	Demands       map[string]*DemandState
 	arrivalNumber int
 	id            string
+	relval        map[float64]float64
+	step          int
 }
 
 func NewBlockState(block *columbiav1.PrivateDataBlock) *BlockState {
@@ -35,6 +37,8 @@ func NewBlockState(block *columbiav1.PrivateDataBlock) *BlockState {
 		Demands:       map[string]*DemandState{},
 		arrivalNumber: 0,
 		id:            util.GetBlockId(block),
+		relval:        map[float64]float64{},
+		step:          0,
 	}
 }
 
@@ -305,16 +309,19 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache, schedulerNa
 
 	//	start := time.Now()
 
-	var relval map[float64]float64
-
-	if schedulerName == util.OVERFLOW_RELEVANCE {
-		relval = blockState.compute_block_overflow()
-	} else if schedulerName == util.SOFT_KNAPSACK {
-		relval = blockState.compute_knapsack(claimCache)
+	//var relval map[float64]float64
+	if blockState.step%100 == 0 {
+		if schedulerName == util.OVERFLOW_RELEVANCE {
+			blockState.relval = blockState.compute_block_overflow()
+		} else if schedulerName == util.SOFT_KNAPSACK {
+			blockState.relval = blockState.compute_knapsack(claimCache)
+		}
 	}
+	blockState.step++
+
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
-		demand := blockState.computeDemandState(reservedBudget, relval, schedulerName)
+		demand := blockState.computeDemandState(reservedBudget, blockState.relval, schedulerName)
 		demandMap[claimId] = demand
 	}
 	//	time_elapsed := time.Since(start)
