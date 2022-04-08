@@ -192,12 +192,12 @@ def run_config(
             if claim["success"] == True:
                 total_profit += claim["profit"]
         config["realized_profit"] = total_profit
-        mice_path = config["mice"]
-        if "/user-time/" in mice_path:
+        path = config["workload"] if "workload" in config else config["mice"]
+        if "/user-time/" in path:
             semantic = "user-time"
-        elif "/user/" in mice_path:
+        elif "/user/" in path:
             semantic = "user"
-        elif "/event/" in mice_path:
+        elif "/event/" in path:
             semantic = "event"
         config["semantic"] = semantic
         # metrics.append(config)

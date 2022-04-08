@@ -6,12 +6,14 @@ import columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/colu
 const RAW_BLOCKS_MULTIPLIER int = 100
 
 type Pipeline struct {
-	Name    string
-	Demand  columbiav1.PrivacyBudget
-	NBlocks int
-	Epsilon float64
-	Profit  float64
-	Type    int
+	Name                 string
+	Demand               columbiav1.PrivacyBudget
+	NBlocks              int
+	Epsilon              float64
+	Profit               float64
+	Type                 int
+	relative_submit_time float64
+	submit_time          float64
 }
 
 func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
@@ -37,12 +39,14 @@ func NewPipeline(name string, p RawPipeline, rdp bool, Type int) Pipeline {
 
 	}
 	return Pipeline{
-		Name:    name,
-		Demand:  demand,
-		NBlocks: p.NBlocks / RAW_BLOCKS_MULTIPLIER,
-		Epsilon: p.Epsilon,
-		Profit:  p.Profit,
-		Type:    Type,
+		Name:                 name,
+		Demand:               demand,
+		NBlocks:              p.NBlocks / RAW_BLOCKS_MULTIPLIER,
+		Epsilon:              p.Epsilon,
+		Profit:               p.Profit,
+		Type:                 Type,
+		relative_submit_time: 0.0,
+		submit_time:          0.0,
 	}
 }
 

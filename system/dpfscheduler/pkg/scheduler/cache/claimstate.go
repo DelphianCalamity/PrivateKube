@@ -160,11 +160,9 @@ func (claimState *ClaimState) UpdateDominantShare() (result ShareInfo) {
 	result.DominantShare = 0
 	result.Efficiency = 0
 	result.AvailableBlocks = make([]string, 0, maxN)
-	fmt.Println("Claim:", claimState.id)
 	for _, pair := range pairs[:maxN] {
 		//result.DominantShare = math.Max(result.DominantShare, pair.share)
 		result.Efficiency = math.Max(result.Efficiency, pair.share/profit)
-		fmt.Println("Task Efficiency", result.Efficiency)
 		result.AvailableBlocks = append(result.AvailableBlocks, pair.blockId)
 	}
 	result.Efficiency = 1 / result.Efficiency

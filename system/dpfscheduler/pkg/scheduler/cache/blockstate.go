@@ -249,7 +249,6 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	knapsack_a := map[float64]float64{}
 	demands_per_alpha := map[float64][]float64{}
 	priorities_per_alpha := map[float64][]float64{}
-
 	for claim_id, reservedBudget := range blockState.block.Status.ReservedBudgetMap {
 		reservedBudget.ToRenyi()
 		blockState.block.Status.AvailableBudget.ToRenyi()
@@ -261,10 +260,8 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 				priorities_per_alpha[alpha] = make([]float64, 0, 16)
 			}
 			// Fill the array with all the demands for this block/alpha
-			if r[i].Epsilon > 0 {
-				demands_per_alpha[alpha] = append(demands_per_alpha[alpha], r[i].Epsilon)
-				priorities_per_alpha[alpha] = append(priorities_per_alpha[alpha], claimCache.Get(claim_id).claim.Spec.Profit)
-			}
+			demands_per_alpha[alpha] = append(demands_per_alpha[alpha], r[i].Epsilon)
+			priorities_per_alpha[alpha] = append(priorities_per_alpha[alpha], claimCache.Get(claim_id).claim.Spec.Profit)
 		}
 	}
 	a := blockState.block.Status.AvailableBudget.Renyi
@@ -286,13 +283,14 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 	}
 	wg.Wait()
 
-	//r := Softmax(tmp, 10000)
+	//	r := Softmax(tmp, 0.0001)
 	r := Argmax(tmp)
+	//        fmt.Println("Argmax", Argmax(tmp))
 	// Quick and sloppy conversion back to a map
-	i := 0
-	for k := range knapsack_a {
-		knapsack_a[k] = r[i]
-		i++
+
+	for i := range a {
+		alpha := a[i].Alpha
+		knapsack_a[alpha] = r[i]
 	}
 	return knapsack_a
 }
@@ -310,14 +308,14 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache, schedulerNa
 	//	start := time.Now()
 
 	//var relval map[float64]float64
-	if blockState.step%100 == 0 {
-		if schedulerName == util.OVERFLOW_RELEVANCE {
-			blockState.relval = blockState.compute_block_overflow()
-		} else if schedulerName == util.SOFT_KNAPSACK {
-			blockState.relval = blockState.compute_knapsack(claimCache)
-		}
+	//	if blockState.step%10 == 0 {
+	if schedulerName == util.OVERFLOW_RELEVANCE {
+		blockState.relval = blockState.compute_block_overflow()
+	} else if schedulerName == util.SOFT_KNAPSACK {
+		blockState.relval = blockState.compute_knapsack(claimCache)
 	}
-	blockState.step++
+	//	}
+	//	blockState.step++
 
 	demandMap := map[string]*DemandState{}
 	for claimId, reservedBudget := range blockState.block.Status.ReservedBudgetMap {

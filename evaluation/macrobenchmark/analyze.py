@@ -17,8 +17,8 @@ from utils import DEFAULT_LOG_PATH, DEFAULT_GO_EXEC
 
 
 def analyze(config):
-    config_output = Path("/home/kelly/PrivateKube/evaluation/macrobenchmark/logs/schedulers/ks-config-profits-1209-190811/0")
-    output_dir = Path("/home/kelly/PrivateKube/evaluation/macrobenchmark/logs/schedulers/ks-config-profits-1209-190811/0")
+    config_output = Path("/home/kelly/PrivateKube/evaluation/macrobenchmark/logs/schedulers/online-0407-074256/0")
+    output_dir = Path("/home/kelly/PrivateKube/evaluation/macrobenchmark/logs/schedulers/online-0407-074256/0")
     logger.info("Analyzing the config.")
     (blocks_df, claims_df) = load_block_claims(
         config_output.joinpath("claims.json"),
@@ -43,14 +43,15 @@ def analyze(config):
         if claim["success"] == True:
             total_profit += claim["profit"]
     config["realized_profit"] = total_profit
-    mice_path = config["mice"]
-    if "/user-time/" in mice_path:
+    path = config["workload"] if "workload" in config else config["mice"]
+    if "/user-time/" in path:
         semantic = "user-time"
-    elif "/user/" in mice_path:
+    elif "/user/" in path:
         semantic = "user"
-    elif "/event/" in mice_path:
+    elif "/event/" in path:
         semantic = "event"
     config["semantic"] = semantic
+
     # metrics.append(config)
     save_yaml(config_output.joinpath("metrics.yaml"), config)
 
@@ -71,5 +72,5 @@ def analyze(config):
 
 
 if __name__ == "__main__":
-    config = load_yaml("/home/kelly/PrivateKube/evaluation/macrobenchmark/ks-config-profits.yaml")
+    config = load_yaml("/home/kelly/PrivateKube/evaluation/macrobenchmark/online.yaml")
     analyze(config)

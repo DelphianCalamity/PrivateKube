@@ -15,17 +15,19 @@ type BlockGenerator struct {
 	Dataset       string
 	InitialBudget columbiav1.PrivacyBudget
 	MaxBlocks     int
+	InitialBlocks int
 	BlockInterval time.Duration
 	StartTime     time.Time
 }
 
-func NewBlockGenerator(stub *Stub, dataset string, epsilon float64, delta float64, gamma float64, maxBlocks int, interval time.Duration) *BlockGenerator {
+func NewBlockGenerator(stub *Stub, dataset string, epsilon float64, delta float64, gamma float64, maxBlocks int, initialBlocks int, interval time.Duration) *BlockGenerator {
 
 	return &BlockGenerator{
 		Stub:          stub,
 		Dataset:       dataset,
-		InitialBudget: columbiav1.NewPrivacyBudget(epsilon, delta, true),
+		InitialBudget: columbiav1.NewPrivacyBudgetTruncated(epsilon, delta, gamma),
 		MaxBlocks:     maxBlocks,
+		InitialBlocks: initialBlocks,
 		BlockInterval: interval,
 		StartTime:     time.Time{},
 	}
@@ -79,12 +81,30 @@ func (b *BlockGenerator) Run() {
 	}
 }
 
-func (b *BlockGenerator) RunLog(block_names chan string) {
-	ticker := time.NewTicker(b.BlockInterval)
-
+func (b *BlockGenerator) RunInitialLog(block_names chan string) {
+	ticker := time.NewTicker(time.Duration(2000) * time.Millisecond)
 	b.StartTime = time.Now()
 	index := 0
-	for index < b.MaxBlocks {
+	for index < b.InitialBlocks {
+		<-ticker.C
+		go func() {
+			block, err := b.createDataBlock(index)
+			if err != nil {
+				log.Print("Error while creating the block.")
+				log.Print(err)
+			} else {
+				block_names <- block.ObjectMeta.Name
+			}
+		}()
+		index++
+	}
+}
+
+func (b *BlockGenerator) RunLog(block_names chan string) {
+	ticker := time.NewTicker(b.BlockInterval)
+	//b.StartTime = time.Now()
+	index := 0
+	for index < (b.MaxBlocks - b.InitialBlocks) {
 		<-ticker.C
 		go func() {
 			block, err := b.createDataBlock(index)

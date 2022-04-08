@@ -13,6 +13,7 @@ import (
 	privacyinformers "columbia.github.com/privatekube/privacyresource/pkg/generated/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 )
@@ -24,6 +25,7 @@ type Stub struct {
 }
 
 func NewStub() Stub {
+	watch.DefaultChanSize = 1000000
 	return Stub{
 		Client:           fake.NewSimpleClientset(),
 		PrivacyScheduler: nil,

@@ -1,11 +1,19 @@
 package stub
 
 import (
+	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
+	"log"
+	"os"
+)
+
+import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -34,6 +42,78 @@ func LoadDir(path string) map[string]RawPipeline {
 			name := strings.TrimSuffix(basename, filepath.Ext(basename))
 			pipelines[name] = *p
 		}
+	}
+	return pipelines
+}
+func listify(field string) []float64 {
+	s := strings.Split(strings.Trim(field, "[]"), ", ")
+
+	var floats []float64
+	for _, x := range s {
+		f, _ := strconv.ParseFloat(x, 64)
+		floats = append(floats, f)
+	}
+	return floats
+}
+
+func ReadTasks(path string) []Pipeline {
+	f, err := os.Open(path + "/privacy_tasks.csv")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	csvReader := csv.NewReader(f)
+	data, err := csvReader.ReadAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var pipelines []Pipeline
+	//max_task_interval := 0.0
+	for i, line := range data {
+		if i > 0 { // omit header line
+
+			epsilon, _ := strconv.ParseFloat(line[0], 64)
+			//delta := line[1]
+			nBlocks, _ := strconv.Atoi(line[2])
+			profit, _ := strconv.ParseFloat(line[3], 64)
+			//blockSelectionPolicy := line[4]
+			taskName := line[5]
+			alphas := listify(line[6])
+			rdpEpsilons := listify(line[7])
+			relativesubmitTime, _ := strconv.ParseFloat(line[8], 64)
+			submitTime, _ := strconv.ParseFloat(line[9], 64)
+
+			b := make(columbiav1.RenyiBudget, len(alphas))
+			for i, alpha := range alphas {
+				b[i].Alpha = alpha
+				b[i].Epsilon = rdpEpsilons[i]
+			}
+			demand := columbiav1.PrivacyBudget{
+				EpsDel: nil,
+				Renyi:  b,
+			}
+
+			pipeline := Pipeline{
+				Name:                 taskName,
+				Demand:               demand,
+				NBlocks:              nBlocks,
+				Epsilon:              epsilon,
+				Profit:               profit,
+				Type:                 0,
+				relative_submit_time: relativesubmitTime,
+				submit_time:          submitTime,
+			}
+			//fmt.Println("task_name", taskName)
+
+			pipelines = append(pipelines, pipeline)
+		}
+	}
+	max_task_interval := pipelines[len(pipelines)-1].submit_time - pipelines[0].submit_time
+
+	for i, _ := range pipelines {
+		pipelines[i].relative_submit_time /= max_task_interval
+		//fmt.Println(pipeline.relative_submit_time)
 	}
 	return pipelines
 }
