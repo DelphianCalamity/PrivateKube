@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"github.com/mit-drl/goop"
 	"github.com/mit-drl/goop/solvers"
-	//	"k8s.io/klog"
 	"math"
-	//	"time"
+	"sort"
 	"sync"
+	"time"
 )
 
 type DemandState struct {
@@ -59,7 +59,7 @@ func (blockState *BlockState) computeDemandState(budget columbiav1.PrivacyBudget
 	blockCost := 0.0
 	if schedulerName == util.DPF {
 		share = getDominantShare(budget, initialBudget)
-	} else if schedulerName == util.OVERFLOW_RELEVANCE || schedulerName == util.SOFT_KNAPSACK {
+	} else if schedulerName == util.OVERFLOW_RELEVANCE || schedulerName == util.KNAPSACK {
 		blockCost = getPerBlockCost(budget, availableBudget, relval_a, schedulerName)
 	}
 
@@ -89,7 +89,7 @@ func getPerBlockCostRenyi(budget columbiav1.RenyiBudget, availableBudget columbi
 				blockCost = 0
 				break
 			}
-		} else if schedulerName == util.SOFT_KNAPSACK {
+		} else if schedulerName == util.KNAPSACK {
 			blockCost += b[i].Epsilon * relval
 		}
 	}
@@ -245,6 +245,19 @@ func gurobi_solve(demands_per_alpha []float64, priorities_per_alpha []float64, a
 	return mba
 }
 
+func knapsack_solve_no_profits(demands_per_alpha []float64, a float64) float64 {
+	mba := 0.0
+	sum := 0.0
+	sort.Float64s(demands_per_alpha)
+	for _, demand := range demands_per_alpha {
+		if sum+demand <= a {
+			sum += demand
+			mba += 1
+		}
+	}
+	return mba
+}
+
 func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float64]float64 {
 	knapsack_a := map[float64]float64{}
 	demands_per_alpha := map[float64][]float64{}
@@ -275,7 +288,9 @@ func (blockState *BlockState) compute_knapsack(claimCache ClaimCache) map[float6
 			defer wg.Done()
 
 			if len(demands_per_alpha[alpha]) > 0 && a[i].Epsilon > 0 {
-				tmp[i] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon) / a[i].Epsilon
+				//tmp[i] = gurobi_solve(demands_per_alpha[alpha], priorities_per_alpha[alpha], a[i].Epsilon) / a[i].Epsilon
+				tmp[i] = knapsack_solve_no_profits(demands_per_alpha[alpha], a[i].Epsilon) / a[i].Epsilon
+
 			} else {
 				tmp[i] = 0
 			}
@@ -305,13 +320,13 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache, schedulerNa
 	blockState.Lock()
 	defer blockState.Unlock()
 
-	//	start := time.Now()
+	start := time.Now()
 
 	//var relval map[float64]float64
 	//	if blockState.step%10 == 0 {
 	if schedulerName == util.OVERFLOW_RELEVANCE {
 		blockState.relval = blockState.compute_block_overflow()
-	} else if schedulerName == util.SOFT_KNAPSACK {
+	} else if schedulerName == util.KNAPSACK {
 		blockState.relval = blockState.compute_knapsack(claimCache)
 	}
 	//	}
@@ -322,9 +337,9 @@ func (blockState *BlockState) UpdateDemandMap(claimCache ClaimCache, schedulerNa
 		demand := blockState.computeDemandState(reservedBudget, blockState.relval, schedulerName)
 		demandMap[claimId] = demand
 	}
-	//	time_elapsed := time.Since(start)
-	//      fmt.Println("Time elapsed - block- id", blockState.id, time_elapsed, start)
-	//	klog.Infof("Time elapsed", blockState.id, time_elapsed)
+	time_elapsed := time.Since(start)
+	fmt.Println("Time elapsed - block- id", blockState.id, time_elapsed, start)
+	//klog.Infof("Time elapsed", blockState.id, time_elapsed)
 
 	// invalid the old demand states
 	for _, demandState := range blockState.Demands {

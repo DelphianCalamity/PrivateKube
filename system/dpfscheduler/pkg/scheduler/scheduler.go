@@ -427,15 +427,15 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 }
 
 func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
-	time.Sleep(wait_time)
-	//for {
-	go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
-	//dpfScheduler.flowReleaseAndAllocate()
-	//time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
-	//}
+	//time.Sleep(wait_time)
+	for {
+		//go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+		time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+		dpfScheduler.flowReleaseAndAllocate()
+	}
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
 	klog.Infof("\n\n\nReleasing Budget\n\n\n")

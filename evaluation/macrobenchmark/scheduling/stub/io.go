@@ -110,11 +110,30 @@ func ReadTasks(path string) []Pipeline {
 		}
 	}
 	max_task_interval := pipelines[len(pipelines)-1].submit_time - pipelines[0].submit_time
-
+	//fmt.Println("max", max_task_interval)
+	//sum := 0.0
+	relative_submit_time := 0.0
+	submit_time := 0.0
 	for i, _ := range pipelines {
-		pipelines[i].relative_submit_time /= max_task_interval
-		//fmt.Println(pipeline.relative_submit_time)
+		if i > 0 {
+			relative_submit_time = pipelines[i].submit_time - submit_time
+		}
+		submit_time = pipelines[i].submit_time
+
+		//sum += relative_submit_time //pipelines[i].relative_submit_time
+		pipelines[i].relative_submit_time = relative_submit_time / max_task_interval
+		//fmt.Println(pipelines[i].relative_submit_time)
+		//fmt.Println("relative", pipelines[i].relative_submit_time*10.0)
+		//fmt.Println("submit:", pipelines[i].submit_time*10)
+		//fmt.Println("\n")
 	}
+	//fmt.Println("sum", sum)
+
+	//sum = 0.0
+	//for i, _ := range pipelines {
+	//	sum += pipelines[i].relative_submit_time
+	//}
+	//fmt.Println("sum", sum)
 	return pipelines
 }
 

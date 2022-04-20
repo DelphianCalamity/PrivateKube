@@ -129,6 +129,28 @@ func run_exponential(scheduler_method, mode string, DPF_T int, dpf_release_perio
 
 	timeout := time.Duration(pipeline_timeout_blocks*block_interval_millisecond) * time.Millisecond
 	//	task_interval_millisecond := float64(block_interval_millisecond) / mean_pipelines_per_block
+
+	b := stub.NewBlockGenerator(&s, "amazon", epsilon, delta, gamma, n_blocks+initial_blocks, initial_blocks, time.Duration(block_interval_millisecond)*time.Millisecond)
+	// Collect the objects' names for future analysis
+	block_names := make(chan string, b.MaxBlocks)
+	claim_names := make(chan string, 10000) //100*int(mean_pipelines_per_block*float64(b.MaxBlocks)))
+
+	b.RunInitialLog(block_names)
+
+	var m stub.PipelineSampler
+	if workload_dir == "" {
+		m = stub.MakeMiceElphantsSampler(rdp, mice_ratio, mice_dir, elephants_dir, n_blocks, mean_pipelines_per_block, block_interval_millisecond)
+	} else {
+		m = stub.MakeAlibabaSampler(workload_dir)
+	}
+
+	g := stub.ClaimGenerator{
+		BlockGen:              b,
+		MeanPipelinesPerBlock: mean_pipelines_per_block,
+		Pipelines:             m,
+		Rand:                  r,
+	}
+
 	switch mode {
 
 	case "N":
@@ -149,27 +171,7 @@ func run_exponential(scheduler_method, mode string, DPF_T int, dpf_release_perio
 		log.Fatal("Invalid DPF mode", mode)
 	}
 
-	b := stub.NewBlockGenerator(&s, "amazon", epsilon, delta, gamma, n_blocks+initial_blocks, initial_blocks, time.Duration(block_interval_millisecond)*time.Millisecond)
-
-	var m stub.PipelineSampler
-	if workload_dir == "" {
-		m = stub.MakeMiceElphantsSampler(rdp, mice_ratio, mice_dir, elephants_dir, n_blocks, mean_pipelines_per_block, block_interval_millisecond)
-	} else {
-		m = stub.MakeAlibabaSampler(workload_dir)
-	}
-
-	g := stub.ClaimGenerator{
-		BlockGen:              b,
-		MeanPipelinesPerBlock: mean_pipelines_per_block,
-		Pipelines:             m,
-		Rand:                  r,
-	}
-	// Collect the objects' names for future analysis
-	block_names := make(chan string, b.MaxBlocks)
-	claim_names := make(chan string, 50000) //100*int(mean_pipelines_per_block*float64(b.MaxBlocks)))
-
 	// Start the block generator in the background
-	b.RunInitialLog(block_names)
 	go b.RunLog(block_names)
 	// Wait a bit before sending pipelines
 	//time.Sleep(time.Duration(initial_blocks) * b.BlockInterval)

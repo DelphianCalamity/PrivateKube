@@ -282,7 +282,7 @@ func (g *ClaimGenerator) RunConstant(claim_names chan string, default_timeout ti
 
 func (g *ClaimGenerator) RunCustom(claim_names chan string, default_timeout time.Duration, n_blocks int) {
 	total_tasks := g.Pipelines.Size()
-	total_duration := time.Duration(g.BlockGen.MaxBlocks+1) * g.BlockGen.BlockInterval
+	total_duration := time.Duration(n_blocks+1) * g.BlockGen.BlockInterval
 	end_time := g.BlockGen.StartTime.Add(total_duration)
 	fmt.Println("Total_duration", total_duration)
 	index := 0

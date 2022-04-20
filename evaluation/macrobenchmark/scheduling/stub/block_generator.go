@@ -82,32 +82,31 @@ func (b *BlockGenerator) Run() {
 }
 
 func (b *BlockGenerator) RunInitialLog(block_names chan string) {
-	ticker := time.NewTicker(time.Duration(2000) * time.Millisecond)
-	b.StartTime = time.Now()
+	//ticker := time.NewTicker(time.Duration(2000) * time.Millisecond)
 	index := 0
 	for index < b.InitialBlocks {
-		<-ticker.C
-		go func() {
-			block, err := b.createDataBlock(index)
-			if err != nil {
-				log.Print("Error while creating the block.")
-				log.Print(err)
-			} else {
-				block_names <- block.ObjectMeta.Name
-			}
-		}()
+		//<-ticker.C
+		//go func() {
+		block, err := b.createDataBlock(index)
+		if err != nil {
+			log.Print("Error while creating the block.")
+			log.Print(err)
+		} else {
+			block_names <- block.ObjectMeta.Name
+		}
+		//}()
 		index++
 	}
 }
 
 func (b *BlockGenerator) RunLog(block_names chan string) {
 	ticker := time.NewTicker(b.BlockInterval)
-	//b.StartTime = time.Now()
+	b.StartTime = time.Now()
 	index := 0
 	for index < (b.MaxBlocks - b.InitialBlocks) {
 		<-ticker.C
 		go func() {
-			block, err := b.createDataBlock(index)
+			block, err := b.createDataBlock(index + b.InitialBlocks)
 			if err != nil {
 				log.Print("Error while creating the block.")
 				log.Print(err)
@@ -122,5 +121,5 @@ func (b *BlockGenerator) RunLog(block_names chan string) {
 // CurrentIndex returns the index of the most recent complete block
 func (b *BlockGenerator) CurrentIndex() int {
 	elapsed := time.Since(b.StartTime)
-	return int(elapsed/b.BlockInterval) - 1
+	return b.InitialBlocks + int(elapsed/b.BlockInterval) - 1
 }
