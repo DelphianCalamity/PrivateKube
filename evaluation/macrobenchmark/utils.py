@@ -197,10 +197,10 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
         except KeyError:
             n_pipelines.append(0)
 
-#    if empty_blocks > failure_ratio * len(blocks):
-#        raise Exception(
-#            f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
-#        )
+   if empty_blocks > failure_ratio * len(blocks):
+       raise Exception(
+           f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
+       )
 
     blocks_df = pd.DataFrame(
         data={
@@ -221,7 +221,6 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
     profit = []
     empty_claims = 0
     for c in claims:
-        print(c["spec"]["profit"])
         try:
             name.append(c["metadata"]["name"])
             n = (
@@ -283,15 +282,6 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
         except KeyError:
             empty_claims += 1
 
-    print(len(name))
-    print(len(n_blocks))
-    print(len(epsilon))
-    print(len(success))
-    print(len(mice))
-    print(len(arrival))
-    print(len(delay))
-    print(len(profit))
-    print(len(block_index))
     if empty_claims > failure_ratio * len(claims):
         raise Exception(
             f"There are too many empty claims: {empty_claims}/{len(claims)}"
