@@ -1,10 +1,6 @@
 package scheduler
 
 import (
-	"context"
-	"fmt"
-	"time"
-
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/algorithm"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/flowreleasing"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/queue"
@@ -12,10 +8,13 @@ import (
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/updater"
 	"columbia.github.com/privatekube/privacyresource/pkg/framework"
 	privacyclientset "columbia.github.com/privatekube/privacyresource/pkg/generated/clientset/versioned"
+	"context"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"time"
 
 	schedulercache "columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
 	columbiav1 "columbia.github.com/privatekube/privacyresource/pkg/apis/columbia.github.com/v1"
@@ -34,6 +33,8 @@ const (
 	// mode
 	NScheme = 0
 	TScheme = 1
+
+	Dpf = "DPF"
 )
 
 type DpfScheduler struct {
@@ -85,12 +86,24 @@ type DpfScheduler struct {
 	// N or T scheme
 	mode int
 
+	scheduler string
+
+	t int
+
 	// default releasing period for DPN-T policy. Unit is ms.
 	// How frequent should the scheduler release budget
 	defaultReleasingPeriod int64
+
+	block_interval_millisecond int
+
+	num_initial_blocks int
 }
 
 type DpfSchedulerOption struct {
+
+	// Scheduler
+	Scheduler string
+
 	// Scheduling Policy
 	Mode int
 
@@ -100,11 +113,17 @@ type DpfSchedulerOption struct {
 	// N for DPF-N Policy
 	N int
 
-	// default releasing period for DPN-T policy. Unit is ms.
+	T int
+
+	// default releasing period for DPF-T policy. Unit is ms.
 	DefaultReleasingPeriod int64
 
-	// default releasing period for DPN-T policy. Unit is ms.
+	// default releasing duration for DPF-T policy. Unit is ms.
 	DefaultReleasingDuration int64
+
+	BlockIntervalMillisecond int
+
+	NumInitialBlocks int
 
 	// Optional: configuration for the streaming counter
 	// E.g. budget for the Laplace mechanism used by the counter (will be converted to RDP if necessary)
@@ -113,6 +132,7 @@ type DpfSchedulerOption struct {
 
 func DefaultNSchemeOption() DpfSchedulerOption {
 	return DpfSchedulerOption{
+		Scheduler:      Dpf,
 		Mode:           NScheme,
 		N:              100,
 		DefaultTimeout: 20000,
@@ -121,6 +141,7 @@ func DefaultNSchemeOption() DpfSchedulerOption {
 
 func DefaultTSchemeOption() DpfSchedulerOption {
 	return DpfSchedulerOption{
+		Scheduler:                Dpf,
 		Mode:                     TScheme,
 		DefaultTimeout:           20000,
 		DefaultReleasingPeriod:   10000,
@@ -148,27 +169,31 @@ func New(privacyResourceClient privacyclientset.Interface,
 	stopCh <-chan struct{},
 	option DpfSchedulerOption) (*DpfScheduler, error) {
 	// this schedulerCache will be used by the scheduler and its algorithm engine
-	schedulerCache := schedulercache.NewStateCache(option.StreamingCounterOptions)
+	schedulerCache := schedulercache.NewStateCache(option.Scheduler, option.StreamingCounterOptions)
 
 	scheduler := new(DpfScheduler)
 	scheduler.privateResourceClient = privacyResourceClient
 	scheduler.cache = schedulerCache
 	scheduler.timer = timing.MakeDefaultTimer()
+	fmt.Println("\n\n\nTIMEOUT:", option.DefaultTimeout)
 	scheduler.schedulingQueue = queue.NewSchedulingQueue(scheduler.timer.Now(), option.DefaultTimeout)
 	scheduler.updater = updater.NewResourceUpdater(privacyResourceClient, schedulerCache)
-
+	scheduler.scheduler = option.Scheduler
+	scheduler.block_interval_millisecond = option.BlockIntervalMillisecond
+	scheduler.num_initial_blocks = option.NumInitialBlocks
 	scheduler.allocChan = make(chan string, 16)
 
 	if option.Mode == TScheme {
-		scheduler.batch = algorithm.NewDpfTSchemeBatch(*scheduler.updater, schedulerCache, scheduler.allocChan)
+		scheduler.batch = algorithm.NewDpfTSchemeBatch(*scheduler.updater, schedulerCache, scheduler.allocChan, scheduler.scheduler)
 		releaseOption := flowreleasing.ReleaseOption{
 			DefaultDuration: option.DefaultReleasingDuration,
+			T:               option.T,
 		}
 		scheduler.flowController = flowreleasing.MakeController(schedulerCache, scheduler.updater, scheduler.timer, releaseOption)
 		scheduler.mode = TScheme
 		scheduler.defaultReleasingPeriod = option.DefaultReleasingPeriod
 	} else {
-		scheduler.batch = algorithm.NewDpfNSchemeBatch(option.N, *scheduler.updater, schedulerCache, scheduler.allocChan)
+		scheduler.batch = algorithm.NewDpfNSchemeBatch(option.N, *scheduler.updater, schedulerCache, scheduler.allocChan, scheduler.scheduler)
 		scheduler.mode = NScheme
 	}
 
@@ -199,10 +224,11 @@ func (dpfScheduler *DpfScheduler) Run(ctx context.Context) {
 	go dpfScheduler.channelHandler()
 
 	if dpfScheduler.mode == TScheme {
-		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+		go dpfScheduler.flowReleaseAndAllocateWrapper(ctx, time.Duration((dpfScheduler.num_initial_blocks+1)*dpfScheduler.block_interval_millisecond)*time.Millisecond)
+		//		go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
 	}
 
-	go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
+	//go wait.UntilWithContext(ctx, dpfScheduler.checkTimeout, queue.BucketSize*time.Millisecond)
 
 	wait.UntilWithContext(ctx, dpfScheduler.scheduleOne, 0)
 
@@ -377,7 +403,7 @@ func (dpfScheduler *DpfScheduler) channelHandler() {
 func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
-
+	klog.Infof("\n\nCHECK TIMOUT\n\n")
 	claimHandlers := dpfScheduler.schedulingQueue.PopWaitingUntil(dpfScheduler.timer.Now())
 
 	for _, claimHandler := range claimHandlers {
@@ -400,10 +426,23 @@ func (dpfScheduler *DpfScheduler) checkTimeout(ctx context.Context) {
 
 }
 
-func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate(ctx context.Context) {
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocateWrapper(ctx context.Context, wait_time time.Duration) {
+	//time.Sleep(wait_time)
+	for {
+		//go wait.UntilWithContext(ctx, dpfScheduler.flowReleaseAndAllocate, time.Duration(dpfScheduler.defaultReleasingPeriod)*time.Millisecond)
+		time.Sleep(time.Duration(dpfScheduler.defaultReleasingPeriod) * time.Millisecond)
+		dpfScheduler.flowReleaseAndAllocate()
+	}
+}
+
+func (dpfScheduler *DpfScheduler) flowReleaseAndAllocate() {
 	dpfScheduler.batch.Lock()
 	defer dpfScheduler.batch.Unlock()
-
+	klog.Infof("\n\n\nReleasing Budget\n\n\n")
 	blockStates := dpfScheduler.flowController.Release()
+	start := time.Now()
+	klog.Infof("\n\n\n\nStart-time", start)
 	dpfScheduler.batch.AllocateAvailableBudgets(blockStates)
+	elapsed := time.Since(start)
+	klog.Infof("\n\n\n\nRuntime", elapsed)
 }

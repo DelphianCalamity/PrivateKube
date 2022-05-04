@@ -3,6 +3,9 @@ package algorithm
 import (
 	"fmt"
 	"sync"
+	"sort"
+	"strings"
+	"strconv"
 
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/errors"
@@ -169,37 +172,61 @@ func (dpf *DpfBatch) BatchRelease(requestHandler framework.RequestHandler) bool 
 
 func (dpf *DpfBatch) getAvailableBlocks(requestViewer framework.RequestViewer) []*cache.BlockState {
 
-	namespace := requestViewer.Claim.Namespace
-	request := requestViewer.View().AllocateRequest
-	requestId := requestViewer.Id
+	//namespace := requestViewer.Claim.Namespace
+	//request := requestViewer.View().AllocateRequest
+	minBlocks := requestViewer.View().AllocateRequest.MinNumberOfBlocks
+	//requestId := requestViewer.Id
 
-	predicate := func(blockState *cache.BlockState) bool {
-		block := blockState.View()
-		// If this data block has been allocated to this request, then we consider this should be available data blocks
-		// belonging to this request.
-		if _, ok := block.Status.LockedBudgetMap[requestId]; ok {
-			return true
-		}
-
-		if block.Namespace != namespace || request.Dataset != block.Spec.Dataset {
-			return false
-		}
-
-		dimensionMap := map[string]columbiav1.Dimension{}
-		for _, dimension := range block.Spec.Dimensions {
-			dimensionMap[dimension.Attribute] = dimension
-		}
-
-		for _, condition := range request.Conditions {
-			dimension, ok := dimensionMap[condition.Attribute]
-			if !ok || !validateCondition(condition, dimension) {
-				return false
-			}
-		}
-
-		return true
+	result := make([]*cache.BlockState, 0, 16)
+	blockNames := make([]string, 0, 16)
+	blockStates := dpf.cache.AllBlocks()
+	for i := 0; i < len(blockStates); i++ {
+		blockNames = append(blockNames, blockStates[i].GetId())
 	}
-	return dpf.cache.FilterBlock(predicate)
+//	sort.Strings(blockNames)
+	sort.Slice(blockNames, func(i, j int) bool {
+		s1 := strings.Split(blockNames[i], "-")
+		s2 := strings.Split(blockNames[j], "-")
+		i1, _ := strconv.Atoi(s1[len(s1)-1])
+		i2, _ := strconv.Atoi(s2[len(s2)-1])
+		return i1 < i2
+	})
+
+
+//	for i := 0; i < len(blockStates); i++ {
+//		fmt.Println(blockNames[i])
+//	}
+	for l := len(blockNames) - 1; l >= 0 && l >= len(blockNames)-minBlocks; l-- {
+		result = append(result, dpf.cache.GetBlock(blockNames[l]))
+	}
+	//predicate := func(blockState *cache.BlockState) bool {
+	//	block := blockState.View()
+	//	//If this data block has been allocated to this request, then we consider this should be available data blocks
+	//	//belonging to this request.
+	//	if _, ok := block.Status.LockedBudgetMap[requestId]; ok {
+	//		return true
+	//	}
+	//
+	//	if block.Namespace != namespace || request.Dataset != block.Spec.Dataset {
+	//		return false
+	//	}
+	//
+	//	dimensionMap := map[string]columbiav1.Dimension{}
+	//	for _, dimension := range block.Spec.Dimensions {
+	//		dimensionMap[dimension.Attribute] = dimension
+	//	}
+	//
+	//	for _, condition := range request.Conditions {
+	//		dimension, ok := dimensionMap[condition.Attribute]
+	//		if !ok || !validateCondition(condition, dimension) {
+	//			return false
+	//		}
+	//	}
+	//
+	//	return true
+	//}
+	//	return dpf.cache.FilterBlock(predicate)
+	return result
 }
 
 func (dpf *DpfBatch) tryBatchConsume(requestViewer framework.RequestViewer) bool {

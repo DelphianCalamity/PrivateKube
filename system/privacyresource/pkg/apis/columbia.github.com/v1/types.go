@@ -213,9 +213,9 @@ type PrivacyBudgetClaimSpec struct {
 	// +optional
 	OwnedBy []corev1.ObjectReference `json:"ownedBy,omitempty"`
 
-	// priority of this claim. the claim with higher priority is allocated before those with low priority.
+	// Profit of this claim.
 	// +optional
-	Priority int32 `json:"priority"`
+	Profit float64 `json:"profit"`
 }
 
 // custom status

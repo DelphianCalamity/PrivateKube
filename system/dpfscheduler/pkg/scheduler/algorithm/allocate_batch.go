@@ -2,7 +2,6 @@ package algorithm
 
 import (
 	"fmt"
-	"math"
 	"sync"
 
 	"columbia.github.com/privatekube/dpfscheduler/pkg/scheduler/cache"
@@ -18,10 +17,11 @@ import (
 // DpfBatch is a snapshot of the tasks waiting to be allocated + the set of blocks and their available budgets
 type DpfBatch struct {
 	sync.Mutex
-	core    CoreAlgorithm
-	updater updater.ResourceUpdater
-	cache   cache.Cache
-	timer   timing.Timer
+	core      CoreAlgorithm
+	updater   updater.ResourceUpdater
+	cache     cache.Cache
+	timer     timing.Timer
+	scheduler string
 
 	// channel used in P2 Allocate to notify exterior about the allocation
 	p2Chan chan<- string
@@ -31,13 +31,15 @@ func NewDpfBatch(
 	updater updater.ResourceUpdater,
 	cache_ cache.Cache,
 	p2Chan chan<- string,
+	scheduler string,
 ) *DpfBatch {
 
 	return &DpfBatch{
-		core:    CoreAlgorithm{},
-		updater: updater,
-		cache:   cache_,
-		p2Chan:  p2Chan,
+		core:      CoreAlgorithm{},
+		updater:   updater,
+		cache:     cache_,
+		p2Chan:    p2Chan,
+		scheduler: scheduler,
 	}
 }
 
@@ -182,7 +184,7 @@ func (dpf *DpfBatch) BatchAllocateTimeout(requestHandler framework.RequestHandle
 }
 
 // getInfluencedClaims fetches all the claims that demand one of the blocks
-// It computes the dominant share for each claim
+// It computes the dominant share or the cost for each claim
 func (dpf *DpfBatch) getInfluencedClaims(blockStates []*cache.BlockState) map[string]cache.ShareInfo {
 	claimShareMap := map[string]cache.ShareInfo{}
 
@@ -201,7 +203,14 @@ func (dpf *DpfBatch) getInfluencedClaims(blockStates []*cache.BlockState) map[st
 			}
 
 			claimState := dpf.cache.GetClaim(claimId)
-			share := claimState.UpdateDominantShare()
+			share := cache.ShareInfo{}
+			if dpf.scheduler == util.DPF {
+				//fmt.Println("GET DOMINANT SHARE\n")
+				share = claimState.UpdateDominantShare()
+			} else {
+				share = claimState.UpdateTotalCost()
+			}
+
 			if share.IsReadyToAllocate {
 				claimShareMap[claimId] = share
 			}
@@ -237,7 +246,13 @@ func (dpf *DpfBatch) updateAffectedClaims(claimShareMap map[string]cache.ShareIn
 			continue
 		}
 
-		shareInfo := claimState.UpdateDominantShare()
+		shareInfo := cache.ShareInfo{}
+		if dpf.scheduler == util.DPF {
+			//fmt.Println("update affected-GET DOMINANT SHARE\n")
+			shareInfo = claimState.UpdateDominantShare()
+		} else {
+			shareInfo = claimState.UpdateTotalCost()
+		}
 		if shareInfo.IsReadyToAllocate {
 			claimShareMap[claimId] = shareInfo
 		} else {
@@ -257,10 +272,9 @@ func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
 			break
 		}
 
-		var minShareClaim *cache.ClaimState
-		var minDominantShare = math.MaxFloat64
-		var minShareInfo cache.ShareInfo
-
+		var shareClaim_ *cache.ClaimState
+		var val_ = 0.0 //math.MaxFloat64
+		var shareInfo_ cache.ShareInfo
 		// Browse claims to find the smallest and remove those which are impossible to allocate
 		for claimId, shareInfo := range claimShareMap {
 			if !shareInfo.IsReadyToAllocate {
@@ -268,28 +282,29 @@ func (dpf *DpfBatch) AllocateAvailableBudgets(blockStates []*cache.BlockState) {
 				continue
 			}
 
-			if shareInfo.DominantShare < minDominantShare {
-				minDominantShare = shareInfo.DominantShare
-				minShareClaim = dpf.cache.GetClaim(claimId)
-				minShareInfo = shareInfo
+			if shareInfo.Efficiency >= val_ {
+				val_ = shareInfo.Efficiency
+				shareClaim_ = dpf.cache.GetClaim(claimId)
+				shareInfo_ = shareInfo
 			}
 		}
 
-		if minShareClaim == nil {
+		if shareClaim_ == nil {
 			break
 		}
 
 		// Pop the smallest claim, since we are going to allocate it
 		// They will be tried in next iteration when more budget becomes available.
-		delete(claimShareMap, minShareClaim.GetId())
-
-		klog.Infof("ready to convert pending budget to acquired budget of claim [%s]", minShareClaim.GetId())
-		if dpf.BatchAllocateP2(minShareClaim, minShareInfo.AvailableBlocks) {
+		delete(claimShareMap, shareClaim_.GetId())
+		//klog.Infof("Allocating [%s]", shareClaim_.GetId())
+		klog.Infof("Allocating [%s]", shareClaim_.GetId(), " - Profit: ", shareInfo_.Profit)
+		klog.Infof("ready to convert pending budget to acquired budget of claim [%s]", shareClaim_.GetId())
+		if dpf.BatchAllocateP2(shareClaim_, shareInfo_.AvailableBlocks) {
 			// notify exterior that this claim has been allocated
-			dpf.p2Chan <- minShareClaim.GetId()
-			dpf.updateAffectedClaims(claimShareMap, minShareInfo.AvailableBlocks)
+			dpf.p2Chan <- shareClaim_.GetId()
+			dpf.updateAffectedClaims(claimShareMap, shareInfo_.AvailableBlocks)
 		} else {
-			klog.Infof("fail to convert pending budget of claim [%s]", minShareClaim.GetId())
+			klog.Infof("fail to convert pending budget of claim [%s]", shareClaim_.GetId())
 		}
 	}
 

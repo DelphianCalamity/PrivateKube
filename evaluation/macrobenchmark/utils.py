@@ -197,10 +197,10 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
         except KeyError:
             n_pipelines.append(0)
 
-    if empty_blocks > failure_ratio * len(blocks):
-        raise Exception(
-            f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
-        )
+   if empty_blocks > failure_ratio * len(blocks):
+       raise Exception(
+           f"There are too many empty blocks: {empty_blocks}/{len(blocks)}"
+       )
 
     blocks_df = pd.DataFrame(
         data={
@@ -210,7 +210,6 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
             "remaining_locked_budget": remaining_locked_budget,
         }
     )
-
     name = []
     n_blocks = []
     epsilon = []
@@ -219,7 +218,7 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
     block_index = []
     arrival = []
     delay = []
-
+    profit = []
     empty_claims = 0
     for c in claims:
         try:
@@ -267,12 +266,18 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
                 )
                 + 1
             )
-            delay.append(
+            try:
+                delay.append(
                 (
                     c["status"]["responses"][0]["allocateResponse"]["finishTime"]
                     - int(c["metadata"]["annotations"]["actualStartTime"])
                 )
                 / block_interval
+                )
+            except:
+                delay.append(0)
+            profit.append(
+                    c["spec"]["profit"]
             )
         except KeyError:
             empty_claims += 1
@@ -291,6 +296,7 @@ def load_block_claims(log_claims, log_blocks, failure_ratio=0.05):
             "mice": mice,
             "arrival": arrival,
             "delay": delay,
+            "profit": profit,
         }
     )
     claims_df["size"] = np.log(

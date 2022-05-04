@@ -29,7 +29,7 @@ def schedulers(
     keep_intermediary=True,
     keep_raw_logs=False,
     analyze=True,
-    max_trials: int = 5,
+    max_trials: int = 1,
     n_processes: int = 1,
     worker_delay: int = 0,
 ):
@@ -186,12 +186,18 @@ def run_config(
         config["fraction_allocated_pipelines"] = config["n_allocated_pipelines"] / len(
             claims_df
         )
-        mice_path = config["mice"]
-        if "/user-time/" in mice_path:
+        total_profit = 0
+        for _, claim in claims_df.iterrows():
+
+            if claim["success"] == True:
+                total_profit += claim["profit"]
+        config["realized_profit"] = total_profit
+        path = config["workload"] if "workload" in config else config["mice"]
+        if "/user-time/" in path:
             semantic = "user-time"
-        elif "/user/" in mice_path:
+        elif "/user/" in path:
             semantic = "user"
-        elif "/event/" in mice_path:
+        elif "/event/" in path:
             semantic = "event"
         config["semantic"] = semantic
         # metrics.append(config)

@@ -9,6 +9,12 @@ import (
 	distuv "gonum.org/v1/gonum/stat/distuv"
 )
 
+const (
+	DPF                = "DPF"
+	OVERFLOW_RELEVANCE = "OVERFLOW_RELEVANCE"
+	KNAPSACK           = "KNAPSACK"
+)
+
 func GetBlockId(block *columbiav1.PrivateDataBlock) string {
 	return block.Namespace + "/" + block.Name
 }

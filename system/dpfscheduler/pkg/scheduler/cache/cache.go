@@ -37,12 +37,15 @@ type StateCache struct {
 
 	claimCache ClaimCache
 	blockCache PrivateDataBlockCache
+
+	schedulerName string
 }
 
-func NewStateCache(counterOptions *StreamingCounterOptions) *StateCache {
+func NewStateCache(schedulerName string, counterOptions *StreamingCounterOptions) *StateCache {
 	return &StateCache{
-		claimCache: *NewClaimCache(),
-		blockCache: *NewPrivateDataBlockCache(counterOptions),
+		claimCache:    *NewClaimCache(),
+		blockCache:    *NewPrivateDataBlockCache(counterOptions),
+		schedulerName: schedulerName,
 	}
 }
 
@@ -132,7 +135,7 @@ func (cache *StateCache) updateDemands(blockState *BlockState) {
 	defer cache.claimLock.RUnlock()
 
 	blockId := blockState.GetId()
-	for claimId, demand := range blockState.UpdateDemandMap() {
+	for claimId, demand := range blockState.UpdateDemandMap(cache.claimCache, cache.schedulerName) {
 		claimState := cache.claimCache.Get(claimId)
 		if claimState == nil {
 			continue

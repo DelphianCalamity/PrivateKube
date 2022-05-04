@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -22,6 +23,7 @@ var (
 	rdp                        int
 	n_blocks                   int
 	block_interval_millisecond int
+	workload_dir               string
 	elephants_dir              string
 	mice_dir                   string
 	mice_ratio                 float64
@@ -31,11 +33,13 @@ var (
 	output_blocks              string
 	profile                    string
 	mode                       string
+	scheduler_method           string
 	DPF_T                      int
 	dpf_release_period_block   float64
 )
 
 func init() {
+	flag.StringVar(&scheduler_method, "scheduler", "DPF", "Scheduler mode.")
 	flag.StringVar(&mode, "mode", "N", "DPF's mode. Either `N` or `T`.")
 	flag.IntVar(&DPF_T, "T", 1, "The value of T for DPF's T-scheme. The budget for each block is completely released after T-1 periods.")
 	flag.Float64Var(&dpf_release_period_block, "release_period", -1, "The release period for DPF-T, in blocks duration. If not specified, we will use 0.5 * (mean pipeline arrival time)")
@@ -46,6 +50,7 @@ func init() {
 	flag.IntVar(&rdp, "rdp", 0, "Set rdp=0 to use eps-del DP, rdp=1 to use RDP (with a default gamma = 0.05).")
 	flag.IntVar(&n_blocks, "n", 10, "n_blocks")
 	flag.IntVar(&block_interval_millisecond, "t", 1_000, "block_interval_millisecond")
+	flag.StringVar(&workload_dir, "workload", "", "Path to the workload dir")
 	flag.StringVar(&elephants_dir, "elephants", "", "Path to the elephants_dir")
 	flag.StringVar(&mice_dir, "mice", "", "Path to the mice_dir")
 	flag.Float64Var(&mice_ratio, "mice_ratio", 0.5, "Mice ratio in the pipeline mix")
@@ -81,7 +86,7 @@ func main() {
 		gamma = 0.05
 	}
 
-	run_exponential(mode, DPF_T, dpf_release_period_block, DPF_N, pipeline_timeout_blocks, epsilon, delta, gamma, n_blocks, block_interval_millisecond, elephants_dir, mice_dir, mice_ratio, mean_pipelines_per_block, initial_blocks, output_blocks, output_claims)
+	run_exponential(scheduler_method, mode, DPF_T, dpf_release_period_block, DPF_N, pipeline_timeout_blocks, epsilon, delta, gamma, n_blocks, block_interval_millisecond, workload_dir, elephants_dir, mice_dir, mice_ratio, mean_pipelines_per_block, initial_blocks, output_blocks, output_claims)
 
 	if profile != "" {
 		fmt.Println("Saving the profiles.")
@@ -115,15 +120,41 @@ func downloadFile(filepath string, url string) error {
 	return err
 }
 
-func run_exponential(mode string, DPF_T int, dpf_release_period_block float64, DPF_N int, pipeline_timeout_blocks int, epsilon float64, delta float64, gamma float64, n_blocks int, block_interval_millisecond int, elephants_dir string, mice_dir string, mice_ratio float64, mean_pipelines_per_block float64, initial_blocks int, output_blocks string, output_claims string) {
+func run_exponential(scheduler_method, mode string, DPF_T int, dpf_release_period_block float64, DPF_N int, pipeline_timeout_blocks int, epsilon float64, delta float64, gamma float64, n_blocks int, block_interval_millisecond int, workload_dir string, elephants_dir string, mice_dir string, mice_ratio float64, mean_pipelines_per_block float64, initial_blocks int, output_blocks string, output_claims string) {
+
+	r := rand.New(rand.NewSource(4))
+
 	rdp := gamma >= 0
 	s := stub.NewStub()
 
 	timeout := time.Duration(pipeline_timeout_blocks*block_interval_millisecond) * time.Millisecond
+	//	task_interval_millisecond := float64(block_interval_millisecond) / mean_pipelines_per_block
+
+	b := stub.NewBlockGenerator(&s, "amazon", epsilon, delta, gamma, n_blocks+initial_blocks, initial_blocks, time.Duration(block_interval_millisecond)*time.Millisecond)
+	// Collect the objects' names for future analysis
+	block_names := make(chan string, b.MaxBlocks)
+	claim_names := make(chan string, 10000) //100*int(mean_pipelines_per_block*float64(b.MaxBlocks)))
+
+	b.RunInitialLog(block_names)
+
+	var m stub.PipelineSampler
+	if workload_dir == "" {
+		m = stub.MakeMiceElphantsSampler(rdp, mice_ratio, mice_dir, elephants_dir, n_blocks, mean_pipelines_per_block, block_interval_millisecond)
+	} else {
+		m = stub.MakeAlibabaSampler(workload_dir)
+	}
+
+	g := stub.ClaimGenerator{
+		BlockGen:              b,
+		MeanPipelinesPerBlock: mean_pipelines_per_block,
+		Pipelines:             m,
+		Rand:                  r,
+	}
+
 	switch mode {
 
 	case "N":
-		s.StartN(timeout, DPF_N)
+		s.StartN(timeout, DPF_N, scheduler_method)
 	case "T":
 		dpf_release_period_millisecond := 0
 		if dpf_release_period_block <= 0 {
@@ -132,32 +163,24 @@ func run_exponential(mode string, DPF_T int, dpf_release_period_block float64, D
 		} else {
 			dpf_release_period_millisecond = int(dpf_release_period_block * float64(block_interval_millisecond))
 		}
+		fmt.Println("release time\n\n\n", dpf_release_period_block)
+		fmt.Println("dpf_release_period_milliseconds\n\n\n", dpf_release_period_millisecond)
 
-		s.StartT(timeout, DPF_T, dpf_release_period_millisecond)
+		s.StartT(timeout, DPF_T, dpf_release_period_millisecond, scheduler_method, block_interval_millisecond, initial_blocks)
 	default:
 		log.Fatal("Invalid DPF mode", mode)
 	}
 
-	b := stub.NewBlockGenerator(&s, "amazon", epsilon, delta, gamma, n_blocks+initial_blocks, time.Duration(block_interval_millisecond)*time.Millisecond)
-
-	m := stub.MakeSampler(rdp, mice_ratio, mice_dir, elephants_dir)
-	g := stub.ClaimGenerator{
-		BlockGen:              b,
-		MeanPipelinesPerBlock: mean_pipelines_per_block,
-		Pipelines:             &m,
-	}
-	// Collect the objects' names for future analysis
-	block_names := make(chan string, b.MaxBlocks)
-	claim_names := make(chan string, 100*int(mean_pipelines_per_block*float64(b.MaxBlocks)))
-
 	// Start the block generator in the background
 	go b.RunLog(block_names)
 	// Wait a bit before sending pipelines
-	time.Sleep(time.Duration(initial_blocks) * b.BlockInterval)
-	g.RunExponential(claim_names, timeout)
-
+	//time.Sleep(time.Duration(initial_blocks) * b.BlockInterval)
+	//g.RunExponentialDeterministic(claim_names, timeout, n_blocks)
+	g.RunCustom(claim_names, timeout, n_blocks)
+	//g.RunConstant(claim_names, timeout, n_blocks, time.Duration(task_interval_millisecond)*time.Millisecond)
+	//g.RunExponential(claim_names, timeout, n_blocks)
 	fmt.Println("Waiting for the last pipelines to timeout")
-	time.Sleep(10 * b.BlockInterval)
+	time.Sleep(20 * b.BlockInterval)
 
 	// Close the channels and browse the objets
 	fmt.Println("Collecting and saving the logs.")

@@ -13,6 +13,7 @@ import (
 	privacyinformers "columbia.github.com/privatekube/privacyresource/pkg/generated/informers/externalversions"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 )
@@ -24,6 +25,7 @@ type Stub struct {
 }
 
 func NewStub() Stub {
+	watch.DefaultChanSize = 1000000
 	return Stub{
 		Client:           fake.NewSimpleClientset(),
 		PrivacyScheduler: nil,
@@ -31,18 +33,23 @@ func NewStub() Stub {
 	}
 }
 
-func (s *Stub) StartN(timeout time.Duration, N int) {
+func (s *Stub) StartN(timeout time.Duration, N int, scheduler_method string) {
 	option := scheduler.DefaultNSchemeOption()
 	option.DefaultTimeout = int64(timeout / time.Millisecond)
 	option.N = N
+	option.Scheduler = scheduler_method
 	s.PrivacyScheduler = startScheduler(s.Client, option)
 }
 
-func (s *Stub) StartT(timeout time.Duration, DPF_T int, dpf_release_period_millisecond int) {
+func (s *Stub) StartT(timeout time.Duration, DPF_T int, dpf_release_period_millisecond int, scheduler_method string, block_interval_millisecond int, num_initial_blocks int) {
 	option := scheduler.DefaultTSchemeOption()
 	option.DefaultTimeout = int64(timeout / time.Millisecond)
 	option.DefaultReleasingPeriod = int64(dpf_release_period_millisecond)
 	option.DefaultReleasingDuration = int64(DPF_T) * int64(dpf_release_period_millisecond)
+	option.Scheduler = scheduler_method
+	option.T = DPF_T
+	option.BlockIntervalMillisecond = block_interval_millisecond
+	option.NumInitialBlocks = num_initial_blocks
 	fmt.Println("Starting DPF-T scheduler:\n", option)
 	s.PrivacyScheduler = startScheduler(s.Client, option)
 }
